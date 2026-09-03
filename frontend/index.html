@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Social Girl | Sales Agent</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header><p class="eyebrow">THE SOCIAL GIRL</p><h1>Campaign control room</h1><p class="muted">Research, review, and send with a human in the loop.</p></header>
+    <section class="panel create"><h2>Start a campaign</h2><form id="campaign-form"><input name="name" placeholder="Campaign name" required><input name="niche" placeholder="Target niche" required><input name="location" placeholder="Location" required><input name="country" placeholder="Country" required><input name="minimum_budget" placeholder="Minimum budget"><input name="lead_count" type="number" min="1" max="100" value="10"><button>Create campaign</button></form></section>
+    <section><div class="section-head"><h2>Campaigns</h2><button class="quiet" id="refresh">Refresh</button></div><div id="campaigns" class="grid"></div></section>
+    <section class="panel"><div class="section-head"><h2>Draft approval</h2><span class="muted">Nothing sends without approval.</span></div><div id="drafts"></div></section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
