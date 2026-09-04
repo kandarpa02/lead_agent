@@ -1,4 +1,4 @@
-# The Social Girl Sales Agent
+# Sales Agent
 
 An Ollama-backed, OpenAI Agents SDK sales workflow. A campaign is persisted, researched on the public web, converted into verified lead records and email drafts, paused for human review, and sent through Gmail only after approval.
 

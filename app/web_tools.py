@@ -1,5 +1,8 @@
+import asyncio
+import json
+import re
 from typing import Annotated
-from urllib.parse import quote_plus
+from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 
 import httpx
 from agents import function_tool
@@ -55,3 +58,54 @@ async def fetch_public_website(
 
     text = BeautifulSoup(response.text, "html.parser").get_text(" ", strip=True)
     return text[:12000]
+
+
+async def _fetch_candidate(candidate: dict[str, str]) -> dict[str, object]:
+    text = await fetch_public_website.__wrapped__(candidate["url"])
+    emails = sorted(set(re.findall(r"[\w.+-]+@[\w-]+\.[\w.-]+", text, flags=re.IGNORECASE)))
+    return {
+        **candidate,
+        "email": emails[0] if emails else None,
+        "website_text": text[:4000],
+    }
+
+
+@function_tool
+async def collect_campaign_evidence(
+    niche: Annotated[str, Field(min_length=2, max_length=120)],
+    location: Annotated[str, Field(min_length=2, max_length=120)],
+    country: Annotated[str, Field(min_length=2, max_length=120)],
+    requested_leads: Annotated[int, Field(ge=1, le=100)],
+) -> str:
+    """Run bounded public-web discovery and return evidence for the research agent.
+
+    This tool owns search and fetching limits so the model cannot loop through
+    one search or candidate indefinitely.
+    """
+    queries = [
+        f"{location} {niche} official website social media",
+        f"{location} {niche} business contact email",
+        f"{location} {niche} {country} businesses",
+    ]
+    search_results = await asyncio.gather(*(search_web.__wrapped__(query) for query in queries))
+    candidates: dict[str, dict[str, str]] = {}
+    url_pattern = re.compile(r"(?:https?:)?//[^\s|]+")
+    for result_text in search_results:
+        for line in result_text.splitlines():
+            urls = url_pattern.findall(line)
+            if not urls:
+                continue
+            url = urls[0].rstrip(".,)")
+            if url.startswith("//"):
+                url = f"https:{url}"
+            parsed = urlparse(url)
+            redirect_target = parse_qs(parsed.query).get("uddg", [None])[0]
+            url = unquote(redirect_target) if redirect_target else url
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower().removeprefix("www.")
+            if domain not in {"html.duckduckgo.com", "duckduckgo.com"}:
+                candidates.setdefault(domain, {"name": line.split(" | ", 1)[0][:200], "url": url})
+    selected = list(candidates.values())[: min(max(requested_leads + 5, 10), 15)]
+    evidence = await asyncio.gather(*(_fetch_candidate(candidate) for candidate in selected), return_exceptions=True)
+    usable = [item for item in evidence if isinstance(item, dict)]
+    return json.dumps({"candidates": usable}, ensure_ascii=True)
