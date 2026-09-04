@@ -5,16 +5,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.agents_workflow import draft_outreach
 from app.database import get_db
 from app.gmail import GmailError, send_approved_email
-from app.models import Approval, Campaign, CampaignRun, EmailDraft, EmailSend, Lead
+from app.models import Approval, Campaign, CampaignRun, EmailDraft, EmailSend, Lead, WorkspaceProfile
 from app.schemas import (
     ApprovalUpdate,
     CampaignCreate,
     CampaignRead,
     DraftRead,
+    DraftRevisionRequest,
+    DraftUpdate,
     LeadCreate,
     LeadRead,
+    WorkspaceProfileRead,
+    WorkspaceProfileUpdate,
 )
 
 app = FastAPI(title=get_settings().app_name, version="0.1.0")
@@ -40,6 +45,24 @@ def live() -> dict[str, str]:
 def ready(db: Session = Depends(get_db)) -> dict[str, str]:
     db.execute(select(1))
     return {"status": "ready"}
+
+
+@app.get("/api/workspace", response_model=WorkspaceProfileRead | None)
+def get_workspace(db: Session = Depends(get_db)) -> WorkspaceProfile | None:
+    return db.get(WorkspaceProfile, 1)
+
+
+@app.put("/api/workspace", response_model=WorkspaceProfileRead)
+def update_workspace(payload: WorkspaceProfileUpdate, db: Session = Depends(get_db)) -> WorkspaceProfile:
+    profile = db.get(WorkspaceProfile, 1)
+    if profile is None:
+        profile = WorkspaceProfile(id=1)
+        db.add(profile)
+    for key, value in payload.model_dump(mode="json").items():
+        setattr(profile, key, value)
+    db.commit()
+    db.refresh(profile)
+    return profile
 
 
 @app.post("/api/campaigns", response_model=CampaignRead, status_code=status.HTTP_201_CREATED)
@@ -106,6 +129,79 @@ def list_drafts(campaign_id: str, db: Session = Depends(get_db)) -> list[EmailDr
     return list(db.scalars(select(EmailDraft).join(Lead).where(Lead.campaign_id == campaign_id)))
 
 
+@app.patch("/api/drafts/{draft_id}", response_model=DraftRead)
+def update_draft(draft_id: str, payload: DraftUpdate, db: Session = Depends(get_db)) -> EmailDraft:
+    draft = db.get(EmailDraft, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    if draft.status in {"Sent", "Contacted", "Rejected"}:
+        raise HTTPException(status_code=409, detail="Draft cannot be edited in its current state")
+    draft.subject = payload.subject
+    draft.body = payload.body
+    draft.version += 1
+    draft.status = "Pending Approval"
+    db.commit()
+    db.refresh(draft)
+    return draft
+
+
+@app.post("/api/drafts/{draft_id}/revise", response_model=DraftRead)
+async def revise_draft(draft_id: str, payload: DraftRevisionRequest, db: Session = Depends(get_db)) -> EmailDraft:
+    draft = db.get(EmailDraft, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    if draft.channel not in {"instagram", "linkedin"}:
+        raise HTTPException(status_code=409, detail="Only social drafts support guided revisions")
+    lead = db.get(Lead, draft.lead_id)
+    profile = db.get(WorkspaceProfile, 1)
+    if lead is None or profile is None:
+        raise HTTPException(status_code=409, detail="Workspace or lead context is missing")
+    revised = await draft_outreach(
+        get_settings(),
+        {
+            "business_name": lead.business_name, "niche": lead.niche, "location": lead.location,
+            "website": lead.website, "instagram": lead.instagram, "linkedin": lead.linkedin,
+            "observation": (lead.research or {}).get("observation", ""),
+            "opportunity": (lead.research or {}).get("opportunity", ""),
+            "current_draft": draft.body, "revision_request": payload.instruction,
+        },
+        draft.channel,
+        {
+            "person_name": profile.person_name, "business_name": profile.business_name,
+            "service_offer": profile.service_offer, "positioning": profile.positioning,
+            "tone": profile.tone, "call_to_action": profile.call_to_action,
+        },
+    )
+    draft.subject = revised.subject
+    draft.body = revised.body
+    draft.version += 1
+    draft.status = "Pending Approval"
+    db.commit()
+    db.refresh(draft)
+    return draft
+
+
+@app.post("/api/drafts/{draft_id}/mark-contacted", response_model=DraftRead)
+def mark_contacted(draft_id: str, db: Session = Depends(get_db)) -> EmailDraft:
+    draft = db.get(EmailDraft, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    if draft.channel == "email":
+        raise HTTPException(status_code=409, detail="Email drafts use the email send workflow")
+    if draft.status != "Approved" or draft.approval is None or draft.approval.action != "approve":
+        raise HTTPException(status_code=409, detail="Only an approved draft can be marked contacted")
+    draft.status = "Contacted"
+    lead = db.get(Lead, draft.lead_id)
+    if lead:
+        from datetime import datetime
+
+        lead.status = "Contacted"
+        lead.contacted_at = datetime.utcnow()
+    db.commit()
+    db.refresh(draft)
+    return draft
+
+
 @app.post("/api/drafts/{draft_id}/approval", response_model=DraftRead)
 def approve_draft(draft_id: str, payload: ApprovalUpdate, db: Session = Depends(get_db)) -> EmailDraft:
     draft = db.get(EmailDraft, draft_id)
@@ -135,6 +231,8 @@ def send_draft(draft_id: str, db: Session = Depends(get_db)) -> EmailDraft:
         raise HTTPException(status_code=404, detail="Draft not found")
     if draft.status != "Approved" or draft.approval is None or draft.approval.action != "approve":
         raise HTTPException(status_code=409, detail="Only an approved draft can be sent")
+    if draft.channel != "email":
+        raise HTTPException(status_code=409, detail="Social drafts must be sent manually")
     if draft.send is not None:
         return draft
     send_record = EmailSend(draft_id=draft.id, status="Sending")

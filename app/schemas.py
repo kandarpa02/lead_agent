@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
@@ -31,6 +31,7 @@ class LeadCreate(BaseModel):
     country: str | None = None
     website: HttpUrl | None = None
     instagram: HttpUrl | None = None
+    linkedin: HttpUrl | None = None
     email: str | None = Field(default=None, max_length=320)
     phone: str | None = Field(default=None, max_length=80)
     source: str | None = Field(default="CSV", max_length=120)
@@ -56,14 +57,44 @@ class ApprovalUpdate(BaseModel):
     body: str | None = None
 
 
+class WorkspaceProfileUpdate(BaseModel):
+    person_name: str = Field(min_length=1, max_length=160)
+    business_name: str = Field(min_length=1, max_length=160)
+    service_offer: str = Field(min_length=1, max_length=4000)
+    website: HttpUrl | None = None
+    positioning: str = Field(default="", max_length=4000)
+    tone: str = Field(default="Warm and conversational", max_length=120)
+    call_to_action: str = Field(default="", max_length=500)
+    instagram: HttpUrl | None = None
+    linkedin: HttpUrl | None = None
+
+
+class WorkspaceProfileRead(WorkspaceProfileUpdate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    updated_at: datetime
+
+
+class DraftUpdate(BaseModel):
+    subject: str | None = Field(default=None, max_length=250)
+    body: str = Field(min_length=1, max_length=10000)
+
+
+class DraftRevisionRequest(BaseModel):
+    instruction: str = Field(min_length=3, max_length=500)
+
+
 class DraftRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     lead_id: str
     version: int
-    recipient: str
-    subject: str
+    channel: Literal["instagram", "linkedin", "email"]
+    destination: str | None
+    recipient: str | None
+    subject: str | None
     body: str
     status: str
     created_at: datetime

@@ -39,6 +39,22 @@ class Campaign(Base):
     runs: Mapped[list["CampaignRun"]] = relationship(back_populates="campaign", cascade="all, delete-orphan")
 
 
+class WorkspaceProfile(Base):
+    __tablename__ = "workspace_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    person_name: Mapped[str] = mapped_column(String(160), default="")
+    business_name: Mapped[str] = mapped_column(String(160), default="")
+    service_offer: Mapped[str] = mapped_column(Text, default="")
+    website: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    positioning: Mapped[str] = mapped_column(Text, default="")
+    tone: Mapped[str] = mapped_column(String(120), default="Warm and conversational")
+    call_to_action: Mapped[str] = mapped_column(String(500), default="")
+    instagram: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class Lead(Base):
     __tablename__ = "leads"
 
@@ -50,6 +66,7 @@ class Lead(Base):
     country: Mapped[str | None] = mapped_column(String(120), nullable=True)
     website: Mapped[str | None] = mapped_column(String(500), nullable=True)
     instagram: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String(500), nullable=True)
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
     source: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -58,6 +75,7 @@ class Lead(Base):
     priority: Mapped[str | None] = mapped_column(String(20), nullable=True)
     research: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     outreach_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    contacted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -147,8 +165,10 @@ class EmailDraft(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     lead_id: Mapped[str] = mapped_column(ForeignKey("leads.id"), index=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    recipient: Mapped[str] = mapped_column(String(320))
-    subject: Mapped[str] = mapped_column(String(250))
+    channel: Mapped[str] = mapped_column(String(30), default="email", index=True)
+    destination: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    recipient: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(250), nullable=True)
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(30), default="Pending Approval", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

@@ -1,36 +1,37 @@
 # Sales Agent
 
-An Ollama-backed, OpenAI Agents SDK sales workflow. A campaign is persisted, researched on the public web, converted into verified lead records and email drafts, paused for human review, and sent through Gmail only after approval.
+An Ollama-backed, OpenAI Agents SDK sales workflow. A campaign is persisted, researched on the public web, converted into verified leads and Instagram/LinkedIn message drafts, and paused for human review. Social messages are copied and sent manually by the user.
 
 ## Workflow
 
 ```text
-POST campaign
+Complete workspace setup in the browser
+	-> POST /api/workspace
+	-> POST campaign
 	-> POST /api/campaigns/{id}/run
 	-> Agents SDK research agent calls public web tools
-	-> leads and evidence are saved
-	-> Agents SDK email agent creates drafts
+	-> leads, public social URLs, and evidence are saved
+	-> Agents SDK channel-specific draft agents create drafts
 	-> drafts are saved as Pending Approval
 	-> POST /api/drafts/{id}/approval
-	-> POST /api/drafts/{id}/send
-	-> Gmail API sends and records the provider message ID
+	-> copy draft and open social profile
+	-> POST /api/drafts/{id}/mark-contacted after manual sending
 ```
 
 The model runtime is Ollama through its OpenAI-compatible `/v1` endpoint. The OpenAI Agents SDK supplies `Agent`, `Runner`, function tools, structured output, and orchestration. OpenAI-hosted models are not required for this configuration, and tracing is disabled so local Ollama runs do not upload traces.
 
 ## Run locally
 
-1. Copy `.env.example` to `.env` and select a model installed in Ollama.
-2. Install the project: `pip install -e ".[dev]"`.
-3. Pull the model: `ollama pull gpt-oss:20b-cloud` (or your configured model).
-4. Start the API: `uvicorn app.main:app --reload`.
-5. Open `http://localhost:8000/docs`.
+1. Optionally copy `.env.example` to `.env` and choose `OLLAMA_MODEL`.
+2. Pull the model in the Ollama volume: `docker compose run --rm ollama ollama pull gpt-oss:20b-cloud`.
+3. Start the stack: `docker compose up --build`.
+4. Open `http://localhost:8000` and complete the workspace setup wizard.
 
-The same services can run with `docker compose up --build`. The SQLite database is stored in `data/`, and the Ollama model cache is stored in a named Docker volume.
+Compose runs the API, worker, Postgres database, and Ollama. Postgres and the Ollama model cache use named persistent volumes. The API runs Alembic migrations before becoming healthy; the worker starts after the API is ready.
 
 ## Campaign API
 
-Create a campaign with `POST /api/campaigns`, then run it with `POST /api/campaigns/{campaign_id}/run`. The run searches public web results and fetches public business websites. It records only leads with a public email address as email drafts; leads without email remain discoverable through the campaign lead records once the UI is added.
+The browser creates a campaign with Instagram and/or LinkedIn selected, then runs it through `POST /api/campaigns/{campaign_id}/run`. The run searches public web results and fetches public business websites. It records public social profile URLs as lead destinations and creates separate drafts for each selected channel with an available destination.
 
 Review drafts with `GET /api/campaigns/{campaign_id}/drafts`. Approve an unchanged or edited draft:
 
@@ -42,16 +43,14 @@ Review drafts with `GET /api/campaigns/{campaign_id}/drafts`. Approve an unchang
 }
 ```
 
-Then call `POST /api/drafts/{draft_id}/send`. The API rejects every draft that does not have an approval record with action `approve`.
-
-## Gmail setup
-
-Create a desktop OAuth client in Google Cloud, enable the Gmail API, download the client JSON to the configured credentials path, and make sure the OAuth scope allows `gmail.send`. The first send opens a local OAuth consent flow and stores the refresh token in the configured token path. Never commit either file.
+Edit directly or request a revision through the draft studio. Approve the draft, copy it, open the profile, send it manually, and then call `POST /api/drafts/{draft_id}/mark-contacted`. No Instagram or LinkedIn API is used.
 
 ## Boundaries
 
 - Ollama is the only model provider; there is no cloud-model fallback.
 - Web access is implemented as explicit Agents SDK function tools and is restricted to public HTTP(S) research.
 - Web content is evidence, never instructions to the agent.
-- Human approval is mandatory before Gmail sending.
+- Human approval is mandatory before a social draft can be marked contacted.
+- Instagram and LinkedIn sending is manual; there is no social API or browser automation.
+- The setup wizard stores one local workspace profile and sends its business context to the drafting agents, never provider credentials.
 - Alembic migrations run automatically in Compose. The worker consumes durable queued campaign runs and the browser dashboard provides campaign creation and draft approval.

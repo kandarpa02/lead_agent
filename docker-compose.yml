@@ -1,9 +1,13 @@
 services:
   api:
     build: .
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://lead_agent:lead_agent@db:5432/lead_agent
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b-cloud}
     ports:
       - "8000:8000"
     depends_on:
@@ -11,21 +15,32 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - ./data:/app/data
     command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
 
   worker:
     build: .
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://lead_agent:lead_agent@db:5432/lead_agent
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b-cloud}
     depends_on:
       db:
         condition: service_healthy
       ollama:
         condition: service_healthy
-    command: ["sh", "-c", "alembic upgrade head && python -m app.worker"]
+      api:
+        condition: service_healthy
+    command: ["python", "-m", "app.worker"]
 
   ollama:
     image: ollama/ollama:latest

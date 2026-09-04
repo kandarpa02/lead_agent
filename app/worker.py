@@ -3,10 +3,10 @@ import logging
 
 from sqlalchemy import select
 
-from app.agents_workflow import draft_email, research_campaign
+from app.agents_workflow import draft_outreach, research_campaign
 from app.config import get_settings
 from app.database import SessionLocal
-from app.models import Campaign, CampaignRun, EmailDraft, Lead, WorkflowStep
+from app.models import Campaign, CampaignRun, EmailDraft, Lead, WorkflowStep, WorkspaceProfile
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -35,14 +35,29 @@ async def execute_run(run_id: str) -> None:
         if run is None or campaign is None:
             return
         try:
+            profile_record = db.get(WorkspaceProfile, 1)
+            if profile_record is None:
+                raise RuntimeError("Complete workspace setup before running a campaign")
+            profile = {
+                "person_name": profile_record.person_name,
+                "business_name": profile_record.business_name,
+                "service_offer": profile_record.service_offer,
+                "website": profile_record.website,
+                "positioning": profile_record.positioning,
+                "tone": profile_record.tone,
+                "call_to_action": profile_record.call_to_action,
+                "instagram": profile_record.instagram,
+                "linkedin": profile_record.linkedin,
+            }
             step = WorkflowStep(run_id=run.id, name="research", status="Running", attempts=1)
             db.add(step)
             db.commit()
             research = await research_campaign(settings, {
                 "name": campaign.name, "niche": campaign.niche, "location": campaign.location,
                 "country": campaign.country, "minimum_budget": campaign.minimum_budget,
-                "lead_count": campaign.lead_count,
-            })
+                "lead_count": campaign.lead_count, "primary_channel": campaign.primary_channel,
+                "secondary_channel": campaign.secondary_channel,
+            }, profile)
             step.status = "Completed"
             step.output = {"lead_count": len(research.leads)}
             run.current_step = "drafting"
@@ -53,19 +68,33 @@ async def execute_run(run_id: str) -> None:
                     campaign_id=campaign.id, business_name=discovered.business_name,
                     niche=discovered.niche or campaign.niche, location=discovered.location or campaign.location,
                     country=campaign.country, website=discovered.website, instagram=discovered.instagram,
+                    linkedin=discovered.linkedin,
                     email=discovered.email, source="Agents SDK web research",
                     research={"source_urls": discovered.source_urls, "observation": discovered.observation, "opportunity": discovered.opportunity},
-                    status="Qualified" if discovered.email else "Research Complete",
+                    status="Qualified" if any((discovered.email, discovered.instagram, discovered.linkedin)) else "Research Complete",
                 )
                 db.add(lead)
                 db.flush()
-                if discovered.email:
-                    draft = await draft_email(settings, {
-                        "business_name": lead.business_name, "niche": lead.niche, "location": lead.location,
-                        "email": lead.email, "observation": discovered.observation,
-                        "opportunity": discovered.opportunity, "source_urls": discovered.source_urls,
-                    })
-                    db.add(EmailDraft(lead_id=lead.id, recipient=lead.email, subject=draft.subject, body=draft.body))
+                lead_data = {
+                    "business_name": lead.business_name, "niche": lead.niche, "location": lead.location,
+                    "website": lead.website, "instagram": lead.instagram, "linkedin": lead.linkedin,
+                    "observation": discovered.observation, "opportunity": discovered.opportunity,
+                    "source_urls": discovered.source_urls,
+                }
+                channels = [campaign.primary_channel.lower()]
+                if campaign.secondary_channel:
+                    channels.append(campaign.secondary_channel.lower())
+                for channel in dict.fromkeys(channels):
+                    destination = {"instagram": lead.instagram, "linkedin": lead.linkedin}.get(channel)
+                    if not destination or db.scalar(select(EmailDraft).where(
+                        EmailDraft.lead_id == lead.id, EmailDraft.channel == channel
+                    )):
+                        continue
+                    draft = await draft_outreach(settings, lead_data, channel, profile)
+                    db.add(EmailDraft(
+                        lead_id=lead.id, channel=channel, destination=destination,
+                        recipient=None, subject=draft.subject, body=draft.body,
+                    ))
                 db.commit()
             run.status = "Awaiting Approval"
             run.current_step = "approval"
