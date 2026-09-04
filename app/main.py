@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -54,6 +54,18 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db)) -> C
 @app.get("/api/campaigns", response_model=list[CampaignRead])
 def list_campaigns(db: Session = Depends(get_db)) -> list[Campaign]:
     return list(db.scalars(select(Campaign).order_by(Campaign.created_at.desc())))
+
+
+@app.delete("/api/campaigns/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_campaign(campaign_id: str, db: Session = Depends(get_db)) -> Response:
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if campaign.status in {"Researching", "Drafting"}:
+        raise HTTPException(status_code=409, detail="Cannot delete a campaign while it is running")
+    db.delete(campaign)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post("/api/campaigns/{campaign_id}/leads", response_model=LeadRead, status_code=status.HTTP_201_CREATED)
