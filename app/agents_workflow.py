@@ -77,10 +77,10 @@ def build_research_agent(settings: Settings) -> Agent[Any]:
 
 def build_draft_agent(settings: Settings) -> Agent[Any]:
     return Agent(
-        name="Email Draft Agent",
+        name="DM Draft Agent",
         model=_model(settings),
         instructions=(
-            "Write one short personalized cold email for The Social Girl from verified lead evidence. Include "
+            "Write one short personalized cold DM for the agency from verified lead evidence. Do not use 'I', use 'we' instead. Include "
             "one genuine opening, one specific observation, one relevant opportunity, a short introduction, and "
             "a conversational CTA. Be warm and non-aggressive. Never invent facts or claim to have reviewed "
             "anything not present in the evidence. Return ONLY valid JSON with no Markdown or commentary. "
