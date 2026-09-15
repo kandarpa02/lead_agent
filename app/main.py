@@ -1,23 +1,55 @@
+from uuid import uuid4
+from datetime import datetime
+from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.agents_workflow import draft_outreach, generate_campaign_brief
 from app.config import get_settings
-from app.agents_workflow import draft_outreach
+from app.constants import VALID_LEAD_TRANSITIONS, LeadStatus
 from app.database import get_db
 from app.gmail import GmailError, send_approved_email
-from app.models import Approval, Campaign, CampaignRun, EmailDraft, EmailSend, Lead, WorkspaceProfile
+from app.models import (
+    Approval,
+    AuditEvent,
+    Campaign,
+    CampaignBrief,
+    CampaignMessage,
+    CampaignRun,
+    EmailDraft,
+    EmailSend,
+    FollowUpTask,
+    Lead,
+    LeadActivity,
+    LeadAudit,
+    LeadQualification,
+    LeadStatusHistory,
+    WorkflowStep,
+    WorkspaceProfile,
+)
 from app.schemas import (
     ApprovalUpdate,
+    CampaignBriefRead,
+    CampaignBriefUpdate,
     CampaignCreate,
+    CampaignDashboardRead,
+    CampaignMessageCreate,
+    CampaignMessageRead,
     CampaignRead,
     DraftRead,
     DraftRevisionRequest,
     DraftUpdate,
+    FollowUpTaskRead,
+    LeadActivityRead,
+    LeadAuditRead,
     LeadCreate,
+    LeadDetailUpdate,
+    LeadQualificationRead,
     LeadRead,
+    LeadStatusUpdate,
     WorkspaceProfileRead,
     WorkspaceProfileUpdate,
 )
@@ -79,16 +111,131 @@ def list_campaigns(db: Session = Depends(get_db)) -> list[Campaign]:
     return list(db.scalars(select(Campaign).order_by(Campaign.created_at.desc())))
 
 
+@app.get("/api/campaigns/{campaign_id}/dashboard", response_model=CampaignDashboardRead)
+def get_campaign_dashboard(campaign_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    latest_run = db.scalar(
+        select(CampaignRun).where(CampaignRun.campaign_id == campaign_id).order_by(CampaignRun.created_at.desc()).limit(1)
+    )
+
+    lead_counts = {}
+    for st in LeadStatus:
+        cnt = db.scalar(select(func.count(Lead.id)).where(Lead.campaign_id == campaign_id, Lead.status == st.value)) or 0
+        lead_counts[st.value] = cnt
+
+    total_leads = db.scalar(select(func.count(Lead.id)).where(Lead.campaign_id == campaign_id)) or 0
+    total_drafts = db.scalar(select(func.count(EmailDraft.id)).join(Lead).where(Lead.campaign_id == campaign_id)) or 0
+    pending_approval = db.scalar(select(func.count(EmailDraft.id)).join(Lead).where(Lead.campaign_id == campaign_id, EmailDraft.status == "Pending Approval")) or 0
+
+    return {
+        "campaign": campaign,
+        "latest_run_step": latest_run.current_step if latest_run else None,
+        "counts": {
+            "total_leads": total_leads,
+            "total_drafts": total_drafts,
+            "pending_approval": pending_approval,
+            **lead_counts,
+        },
+    }
+
+
 @app.delete("/api/campaigns/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_campaign(campaign_id: str, db: Session = Depends(get_db)) -> Response:
     campaign = db.get(Campaign, campaign_id)
     if campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    if campaign.status in {"Researching", "Drafting"}:
+    if campaign.status in {"Researching", "Drafting", "Qualifying", "Auditing"}:
         raise HTTPException(status_code=409, detail="Cannot delete a campaign while it is running")
     db.delete(campaign)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.post("/api/campaigns/{campaign_id}/messages", response_model=CampaignMessageRead)
+async def add_campaign_message(campaign_id: str, payload: CampaignMessageCreate, db: Session = Depends(get_db)) -> CampaignMessage:
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    user_msg = CampaignMessage(campaign_id=campaign_id, role="user", content=payload.content)
+    db.add(user_msg)
+    db.commit()
+
+    messages = list(db.scalars(select(CampaignMessage).where(CampaignMessage.campaign_id == campaign_id).order_by(CampaignMessage.created_at)))
+    chat_history = [{"role": m.role, "content": m.content} for m in messages]
+
+    profile = db.get(WorkspaceProfile, 1)
+    profile_dict = {
+        "person_name": profile.person_name if profile else "",
+        "business_name": profile.business_name if profile else "",
+        "service_offer": profile.service_offer if profile else "",
+    }
+
+    brief_output = await generate_campaign_brief(
+        get_settings(),
+        campaign.name,
+        campaign.niche,
+        campaign.location,
+        campaign.country,
+        chat_history,
+        profile_dict,
+    )
+
+    brief_data = brief_output.model_dump()
+    assistant_reply = brief_data.pop("assistant_reply", "Generated proposed campaign brief.")
+
+    assistant_msg = CampaignMessage(campaign_id=campaign_id, role="assistant", content=assistant_reply)
+    db.add(assistant_msg)
+
+    brief_rec = db.scalar(select(CampaignBrief).where(CampaignBrief.campaign_id == campaign_id).order_by(CampaignBrief.version.desc()).limit(1))
+    new_version = (brief_rec.version + 1) if brief_rec else 1
+
+    new_brief = CampaignBrief(
+        campaign_id=campaign_id,
+        version=new_version,
+        brief_data=brief_data,
+        status="Proposed",
+    )
+    db.add(new_brief)
+    campaign.brief = brief_data
+    campaign.brief_status = "Proposed"
+
+    db.commit()
+    db.refresh(user_msg)
+    return user_msg
+
+
+@app.get("/api/campaigns/{campaign_id}/messages", response_model=list[CampaignMessageRead])
+def list_campaign_messages(campaign_id: str, db: Session = Depends(get_db)) -> list[CampaignMessage]:
+    return list(db.scalars(select(CampaignMessage).where(CampaignMessage.campaign_id == campaign_id).order_by(CampaignMessage.created_at)))
+
+
+@app.get("/api/campaigns/{campaign_id}/brief", response_model=CampaignBriefRead | None)
+def get_campaign_brief(campaign_id: str, db: Session = Depends(get_db)) -> CampaignBrief | None:
+    return db.scalar(select(CampaignBrief).where(CampaignBrief.campaign_id == campaign_id).order_by(CampaignBrief.version.desc()).limit(1))
+
+
+@app.put("/api/campaigns/{campaign_id}/brief", response_model=CampaignBriefRead)
+def update_campaign_brief(campaign_id: str, payload: CampaignBriefUpdate, db: Session = Depends(get_db)) -> CampaignBrief:
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    latest = db.scalar(select(CampaignBrief).where(CampaignBrief.campaign_id == campaign_id).order_by(CampaignBrief.version.desc()).limit(1))
+    version = (latest.version + 1) if latest else 1
+
+    brief_data = payload.model_dump()
+    new_brief = CampaignBrief(campaign_id=campaign_id, version=version, brief_data=brief_data, status="Finalized")
+    db.add(new_brief)
+    campaign.brief = brief_data
+    campaign.brief_status = "Finalized"
+
+    db.commit()
+    db.refresh(new_brief)
+    return new_brief
 
 
 @app.post("/api/campaigns/{campaign_id}/leads", response_model=LeadRead, status_code=status.HTTP_201_CREATED)
@@ -108,6 +255,53 @@ def list_leads(campaign_id: str, db: Session = Depends(get_db)) -> list[Lead]:
     return list(db.scalars(select(Lead).where(Lead.campaign_id == campaign_id).order_by(Lead.created_at.desc())))
 
 
+@app.get("/api/leads/{lead_id}", response_model=LeadRead)
+def get_lead(lead_id: str, db: Session = Depends(get_db)) -> Lead:
+    lead = db.get(Lead, lead_id)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return lead
+
+
+@app.patch("/api/leads/{lead_id}", response_model=LeadRead)
+def update_lead_details(lead_id: str, payload: LeadDetailUpdate, db: Session = Depends(get_db)) -> Lead:
+    lead = db.get(Lead, lead_id)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(lead, key, value)
+
+    db.add(LeadActivity(lead_id=lead_id, activity_type="details_updated", description="Updated lead configuration & notes"))
+    db.commit()
+    db.refresh(lead)
+    return lead
+
+
+@app.post("/api/leads/{lead_id}/status", response_model=LeadRead)
+def update_lead_status(lead_id: str, payload: LeadStatusUpdate, db: Session = Depends(get_db)) -> Lead:
+    lead = db.get(Lead, lead_id)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    valid_targets = VALID_LEAD_TRANSITIONS.get(lead.status, set())
+    if valid_targets and payload.status not in valid_targets:
+        # Allow operator override but log reason
+        pass
+
+    old_status = lead.status
+    lead.status = payload.status
+    lead.last_activity_at = datetime.utcnow()
+
+    db.add(LeadStatusHistory(lead_id=lead_id, from_status=old_status, to_status=payload.status, reason=payload.reason))
+    db.add(LeadActivity(lead_id=lead_id, activity_type="status_changed", description=f"Changed status from {old_status} to {payload.status}"))
+    db.add(AuditEvent(action="lead_status_changed", entity_type="lead", entity_id=lead_id, metadata_json={"from": old_status, "to": payload.status}))
+
+    db.commit()
+    db.refresh(lead)
+    return lead
+
+
 @app.post("/api/campaigns/{campaign_id}/run", response_model=CampaignRead, status_code=status.HTTP_202_ACCEPTED)
 def run_campaign(campaign_id: str, db: Session = Depends(get_db)) -> Campaign:
     campaign = db.get(Campaign, campaign_id)
@@ -115,7 +309,7 @@ def run_campaign(campaign_id: str, db: Session = Depends(get_db)) -> Campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     if campaign.status not in {"Created", "Failed"}:
         raise HTTPException(status_code=409, detail="Campaign is already running or completed")
-    run = CampaignRun(campaign_id=campaign.id, idempotency_key=f"campaign:{campaign.id}", status="Queued")
+    run = CampaignRun(campaign_id=campaign.id, idempotency_key=f"campaign:{campaign.id}:run-{str(uuid4())[:8]}", status="Queued")
     campaign.status = "Queued"
     campaign.error = None
     db.add(run)
@@ -150,8 +344,6 @@ async def revise_draft(draft_id: str, payload: DraftRevisionRequest, db: Session
     draft = db.get(EmailDraft, draft_id)
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
-    if draft.channel not in {"instagram", "linkedin"}:
-        raise HTTPException(status_code=409, detail="Only social drafts support guided revisions")
     lead = db.get(Lead, draft.lead_id)
     profile = db.get(WorkspaceProfile, 1)
     if lead is None or profile is None:
@@ -161,6 +353,7 @@ async def revise_draft(draft_id: str, payload: DraftRevisionRequest, db: Session
         {
             "business_name": lead.business_name, "niche": lead.niche, "location": lead.location,
             "website": lead.website, "instagram": lead.instagram, "linkedin": lead.linkedin,
+            "facebook": lead.facebook, "email": lead.email,
             "observation": (lead.research or {}).get("observation", ""),
             "opportunity": (lead.research or {}).get("opportunity", ""),
             "current_draft": draft.body, "revision_request": payload.instruction,
@@ -193,10 +386,11 @@ def mark_contacted(draft_id: str, db: Session = Depends(get_db)) -> EmailDraft:
     draft.status = "Contacted"
     lead = db.get(Lead, draft.lead_id)
     if lead:
-        from datetime import datetime
-
         lead.status = "Contacted"
         lead.contacted_at = datetime.utcnow()
+        lead.last_contacted_channel = draft.channel
+        lead.last_activity_at = datetime.utcnow()
+        db.add(LeadActivity(lead_id=lead.id, activity_type="outreach_sent_manually", channel=draft.channel, description=f"Marked {draft.channel} message as contacted manually"))
     db.commit()
     db.refresh(draft)
     return draft
@@ -216,9 +410,11 @@ def approve_draft(draft_id: str, payload: ApprovalUpdate, db: Session = Depends(
             draft.subject = payload.subject
         draft.status = "Approved"
         db.add(Approval(draft_id=draft.id, action="approve", edited_subject=payload.subject, edited_body=payload.body))
+        db.add(LeadActivity(lead_id=draft.lead_id, activity_type="draft_approved", channel=draft.channel, description=f"Approved {draft.channel} draft"))
     else:
         draft.status = "Rejected"
         db.add(Approval(draft_id=draft.id, action="reject"))
+        db.add(LeadActivity(lead_id=draft.lead_id, activity_type="draft_rejected", channel=draft.channel, description=f"Rejected {draft.channel} draft"))
     db.commit()
     db.refresh(draft)
     return draft
@@ -246,6 +442,10 @@ def send_draft(draft_id: str, db: Session = Depends(get_db)) -> EmailDraft:
         lead = db.get(Lead, draft.lead_id)
         if lead:
             lead.status = "Contacted"
+            lead.contacted_at = datetime.utcnow()
+            lead.last_contacted_channel = "email"
+            lead.last_activity_at = datetime.utcnow()
+            db.add(LeadActivity(lead_id=lead.id, activity_type="email_sent", channel="email", description="Sent email via Gmail API"))
     except GmailError as exc:
         send_record.status = "Failed"
         send_record.error = str(exc)

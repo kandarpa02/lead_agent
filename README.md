@@ -1,24 +1,42 @@
-# Sales Agent
+# Sales Agent — PDF Prospecting Methodology
 
-An Ollama-backed, OpenAI Agents SDK sales workflow. A campaign is persisted, researched on the public web, converted into verified leads and Instagram/LinkedIn message drafts, and paused for human review. Social messages are copied and sent manually by the user.
+An Ollama-backed, OpenAI Agents SDK sales workflow aligned with **The Social Girl Prospecting Methodology**. A campaign is initialized with structured targeting and an optional chat brief assistant, researched on the public web across multiple sources, qualified using an 8-factor scoring matrix, audited for social media opportunities, and converted into channel-specific outreach drafts (Instagram, LinkedIn, Facebook, Email) paused for human review.
 
 ## Workflow
 
 ```text
 Complete workspace setup in the browser
 	-> POST /api/workspace
-	-> POST campaign
+	-> Create campaign (optionally refine brief with AI Chat Assistant)
 	-> POST /api/campaigns/{id}/run
-	-> Agents SDK research agent calls public web tools
-	-> leads, public social URLs, and evidence are saved
-	-> Agents SDK channel-specific draft agents create drafts
-	-> drafts are saved as Pending Approval
-	-> POST /api/drafts/{id}/approval
-	-> copy draft and open social profile
-	-> POST /api/drafts/{id}/mark-contacted after manual sending
+	-> Agents SDK research agent executes PDF discovery patterns
+	-> Public web evidence, social profiles (Instagram, LinkedIn, Facebook, Maps) are stored in ResearchEvidence
+	-> Lead qualification matrix calculates 8-factor score & priority (HOT / WARM / COLD / SKIP)
+	-> Lead audit profile records observations, missing social elements, and personalized offer angles
+	-> Draft agents create channel-specific outreach DMs / Email drafts (Pending Approval)
+	-> Human reviews, revises, and approves drafts
+	-> Social DMs are copied & sent manually; approved Email drafts can be sent via Gmail API
+	-> Mark contacted / record lead activities and manage follow-ups in Lead Tracker
 ```
 
-The model runtime is Ollama through its OpenAI-compatible `/v1` endpoint. The OpenAI Agents SDK supplies `Agent`, `Runner`, function tools, structured output, and orchestration. OpenAI-hosted models are not required for this configuration, and tracing is disabled so local Ollama runs do not upload traces.
+The model runtime is Ollama through its OpenAI-compatible `/v1` endpoint. The OpenAI Agents SDK supplies `Agent`, `Runner`, function tools, structured output, and orchestration.
+
+## Features & PDF Methodology Realization
+
+- **AI Campaign Brief Assistant**: Chat interface during campaign initialization to define Ideal Customer Profile, buying signals, excluded types, and custom operator instructions.
+- **PDF Discovery Query Builder**: Automated search patterns covering industry tiers, growth signals, city priorities (e.g. Kolkata & major hubs), and multi-channel profile detection.
+- **Deterministic 8-Factor Qualification**: Evaluates established history, customer proof, offer quality, active operations, social presence, social opportunity gap, budget/ability to pay, and growth potential.
+- **HOT / WARM / COLD / SKIP Prioritization**: Automatically prioritizes high-opportunity leads while skipping non-fits.
+- **Full Lead Audit Profile**: Stores what is working, what is missing, social opportunity gaps, recommended offer, and personalization notes.
+- **4-Channel Outreach**: Supports Instagram, LinkedIn, Facebook DMs, and Email outreach.
+- **Lead Tracker & Operator Dashboard**: Responsive UI with priority chips, search filters, lead detail modal, source evidence links, activity timeline, and follow-up management.
+
+## Boundaries
+
+- Ollama is the model provider; there is no cloud-model fallback.
+- Web research is restricted to public HTTP(S) data. Direct social profile inspection and messaging are kept manual to avoid unauthorized platform automation.
+- Human approval is mandatory before any message can be marked contacted or sent.
+- Alembic migrations run automatically in Compose (`0003_pdf_prospecting_workflow`).
 
 ## Run locally
 

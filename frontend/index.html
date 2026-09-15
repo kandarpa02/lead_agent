@@ -11,10 +11,205 @@
     <header><p class="eyebrow">THE SOCIAL GIRL / LOCAL WORKSPACE</p><h1>Turn good research into better conversations.</h1><p class="muted">Find public business details, shape the message, and send social DMs yourself.</p></header>
     <section id="setup" class="panel setup-panel"><div class="section-head"><div><p class="eyebrow">FIRST RUN</p><h2>Tell the agent who you are</h2></div><span class="muted">Saved locally in your workspace</span></div><form id="workspace-form" class="form-grid"><input name="person_name" placeholder="Your name" required><input name="business_name" placeholder="Business or agency name" required><input name="website" type="url" placeholder="Your website"><textarea name="service_offer" placeholder="What do you offer?" required></textarea><textarea name="positioning" placeholder="Who do you help and how?"></textarea><input name="tone" placeholder="Tone, e.g. warm and direct" value="Warm and conversational"><input name="call_to_action" placeholder="Preferred call to action"><input name="instagram" type="url" placeholder="Your Instagram profile"><input name="linkedin" type="url" placeholder="Your LinkedIn profile"><button>Save workspace</button></form></section>
     <section id="app" hidden>
-      <section class="panel create"><div class="section-head"><div><p class="eyebrow">NEW SEARCH</p><h2>Start a campaign</h2></div><button class="quiet" id="edit-workspace">Workspace settings</button></div><form id="campaign-form" class="form-grid"><input name="name" placeholder="Campaign name" required><input name="niche" placeholder="Target niche" required><input name="location" placeholder="Location" required><input name="country" placeholder="Country" required><input name="minimum_budget" placeholder="Minimum budget"><input name="lead_count" type="number" min="1" max="100" value="10"><fieldset><legend>Draft channels</legend><label><input type="checkbox" name="channels" value="Instagram" checked> Instagram</label><label><input type="checkbox" name="channels" value="LinkedIn" checked> LinkedIn</label></fieldset><button>Create campaign</button></form></section>
-      <section><div class="section-head"><div><p class="eyebrow">PIPELINE</p><h2>Campaigns</h2></div><button class="quiet" id="refresh">Refresh</button></div><div id="campaigns" class="grid"></div></section>
-      <section class="panel"><div class="section-head"><div><p class="eyebrow">DRAFT STUDIO</p><h2>Manual outreach queue</h2></div><span class="muted">Approve first. Copy and send yourself.</span></div><div id="drafts"></div></section>
+      <section class="panel create">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">NEW SEARCH &amp; CAMPAIGN</p>
+            <h2>Initialize a Prospecting Campaign</h2>
+          </div>
+          <button class="quiet" id="edit-workspace">Workspace settings</button>
+        </div>
+        
+        <form id="campaign-form" class="form-grid">
+          <input name="name" placeholder="Campaign name" required>
+          <input name="niche" placeholder="Target niche / industry" required>
+          <input name="location" placeholder="Location (City)" required>
+          <input name="country" placeholder="Country" required>
+          <input name="minimum_budget" placeholder="Minimum budget, e.g. $1000">
+          <input name="lead_count" type="number" min="1" max="100" value="10">
+          <textarea name="operator_instructions" placeholder="Optional notes or requirements for this campaign..."></textarea>
+
+          <fieldset>
+            <legend>Outreach Channels</legend>
+            <label><input type="checkbox" name="channels" value="Instagram" checked> Instagram</label>
+            <label><input type="checkbox" name="channels" value="LinkedIn" checked> LinkedIn</label>
+            <label><input type="checkbox" name="channels" value="Facebook" checked> Facebook</label>
+            <label><input type="checkbox" name="channels" value="Email" checked> Email</label>
+          </fieldset>
+          
+          <button type="submit">Create Campaign</button>
+        </form>
+
+        <div id="brief-section" class="brief-container" hidden>
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">AI BRIEF ASSISTANT (OPTIONAL)</p>
+              <h3>Refine Campaign Brief &amp; Targeting Strategy</h3>
+            </div>
+          </div>
+          
+          <div class="chat-box" id="chat-history"></div>
+
+          <form id="chat-form" class="chat-input-row">
+            <input id="chat-input" placeholder="Type instructions, e.g., 'Target high-ticket coaches with active reels'..." required>
+            <button type="submit" class="quiet">Send</button>
+          </form>
+
+          <div id="brief-editor" class="brief-preview-panel" hidden>
+            <h4>Proposed Campaign Brief</h4>
+            <div class="form-grid">
+              <label class="full-width">
+                <span>Ideal Customer Profile</span>
+                <textarea id="brief-icp"></textarea>
+              </label>
+              <label>
+                <span>Industry Tiers</span>
+                <input id="brief-tiers" placeholder="Comma separated">
+              </label>
+              <label>
+                <span>Buying Signals</span>
+                <input id="brief-signals" placeholder="Comma separated">
+              </label>
+              <label>
+                <span>Excluded Types</span>
+                <input id="brief-excluded" placeholder="Comma separated">
+              </label>
+              <label>
+                <span>Offer Angles</span>
+                <input id="brief-angles" placeholder="Comma separated">
+              </label>
+            </div>
+            <button id="save-brief-btn">Finalize &amp; Update Brief</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">CAMPAIGN DASHBOARD</p>
+            <h2>Campaign Overview</h2>
+          </div>
+          <button class="quiet" id="refresh">Refresh Dashboard</button>
+        </div>
+        
+        <div id="campaigns" class="grid"></div>
+      </section>
+
+      <section id="tracker-section" class="panel" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">LEAD TRACKER</p>
+            <h2 id="tracker-title">Campaign Lead Pipeline</h2>
+          </div>
+          <div class="metrics-row" id="dashboard-metrics"></div>
+        </div>
+
+        <div class="tracker-toolbar">
+          <select id="filter-priority">
+            <option value="">All Priorities</option>
+            <option value="HOT">HOT (&gt;=80)</option>
+            <option value="WARM">WARM (&gt;=60)</option>
+            <option value="COLD">COLD (&gt;=40)</option>
+            <option value="SKIP">SKIP (&lt;40)</option>
+          </select>
+
+          <select id="filter-status">
+            <option value="">All Statuses</option>
+            <option value="Qualified">Qualified</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Follow-up Due">Follow-up Due</option>
+            <option value="Not a Fit">Not a Fit</option>
+          </select>
+
+          <input id="search-tracker" placeholder="Search leads by name or location...">
+        </div>
+
+        <table class="lead-table">
+          <thead>
+            <tr>
+              <th>Priority</th>
+              <th>Score</th>
+              <th>Business Name</th>
+              <th>Location</th>
+              <th>Rec. Channel</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tracker-table-body"></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">DRAFT STUDIO</p>
+            <h2>Manual Outreach Queue</h2>
+          </div>
+          <span class="muted">Approve first. Copy message &amp; send manually.</span>
+        </div>
+        <div id="drafts"></div>
+      </section>
     </section>
+
+    <dialog id="lead-modal" class="lead-modal">
+      <div class="modal-header">
+        <h3 id="modal-business-name">Lead Details</h3>
+        <button id="close-modal-btn" class="quiet">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tab-buttons">
+          <button class="tab-btn active" data-tab="tab-research">Research &amp; Evidence</button>
+          <button class="tab-btn" data-tab="tab-audit">Audit &amp; Qualification</button>
+          <button class="tab-btn" data-tab="tab-outreach">Outreach &amp; Drafts</button>
+          <button class="tab-btn" data-tab="tab-activity">Activities &amp; History</button>
+        </div>
+
+        <div id="tab-research" class="tab-content active">
+          <p><strong>Observation:</strong> <span id="lead-obs"></span></p>
+          <p><strong>Opportunity:</strong> <span id="lead-opp"></span></p>
+          <div id="lead-links-row" class="links-row"></div>
+          <h4>Source Evidence</h4>
+          <ul id="lead-evidence-list"></ul>
+        </div>
+
+        <div id="tab-audit" class="tab-content">
+          <div class="score-breakdown">
+            <h4>Qualification Score: <span id="modal-score"></span> (<span id="modal-priority"></span>)</h4>
+            <ul id="score-factors-list"></ul>
+          </div>
+          <h4>Audit Profile</h4>
+          <p><strong>What is Working:</strong> <span id="audit-working"></span></p>
+          <p><strong>What is Missing:</strong> <span id="audit-missing"></span></p>
+          <p><strong>Recommended Offer:</strong> <span id="audit-offer"></span></p>
+          <p><strong>Personalization Note:</strong> <span id="audit-note"></span></p>
+        </div>
+
+        <div id="tab-outreach" class="tab-content">
+          <p><strong>Recommended Channel:</strong> <span id="modal-rec-chan"></span></p>
+          <p class="muted" id="modal-rec-reason"></p>
+          <div id="modal-drafts-container"></div>
+        </div>
+
+        <div id="tab-activity" class="tab-content">
+          <h4>Activity Timeline</h4>
+          <ul id="activity-timeline"></ul>
+          <hr>
+          <h4>Status &amp; Follow-up Override</h4>
+          <div class="form-grid">
+            <select id="update-lead-status-sel">
+              <option value="Qualified">Qualified</option>
+              <option value="Contacted">Contacted</option>
+              <option value="Follow-up Due">Follow-up Due</option>
+              <option value="Not a Fit">Not a Fit</option>
+              <option value="Won">Won</option>
+            </select>
+            <button id="save-lead-status-btn">Change Status</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
   </main>
   <script src="/static/app.js"></script>
 </body>
