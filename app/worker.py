@@ -321,16 +321,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-async def main() -> None:
-    while True:
-        run = claim_run()
-        if run:
-            await execute_run(run.id)
-        else:
-            await asyncio.sleep(2)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

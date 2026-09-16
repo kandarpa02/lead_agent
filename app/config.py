@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "The Social Girl Sales Agent"
+    app_name: str = "Lead Search Agent"
     database_url: str = "sqlite:///./data/lead_agent.db"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "gpt-oss:20b-cloud"

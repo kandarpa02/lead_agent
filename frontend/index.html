@@ -3,214 +3,615 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>The Social Girl | Sales Agent</title>
+  <title>Lead Search Agent | Autonomous Prospecting Workspace</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <main class="shell">
-    <header><p class="eyebrow">THE SOCIAL GIRL / LOCAL WORKSPACE</p><h1>Turn good research into better conversations.</h1><p class="muted">Find public business details, shape the message, and send social DMs yourself.</p></header>
-    <section id="setup" class="panel setup-panel"><div class="section-head"><div><p class="eyebrow">FIRST RUN</p><h2>Tell the agent who you are</h2></div><span class="muted">Saved locally in your workspace</span></div><form id="workspace-form" class="form-grid"><input name="person_name" placeholder="Your name" required><input name="business_name" placeholder="Business or agency name" required><input name="website" type="url" placeholder="Your website"><textarea name="service_offer" placeholder="What do you offer?" required></textarea><textarea name="positioning" placeholder="Who do you help and how?"></textarea><input name="tone" placeholder="Tone, e.g. warm and direct" value="Warm and conversational"><input name="call_to_action" placeholder="Preferred call to action"><input name="instagram" type="url" placeholder="Your Instagram profile"><input name="linkedin" type="url" placeholder="Your LinkedIn profile"><button>Save workspace</button></form></section>
-    <section id="app" hidden>
-      <section class="panel create">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">NEW SEARCH &amp; CAMPAIGN</p>
-            <h2>Initialize a Prospecting Campaign</h2>
+  <div class="app-layout">
+    <!-- Left Sidebar -->
+    <aside class="app-sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <a href="#" class="brand-badge" id="brand-home-link">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
           </div>
-          <button class="quiet" id="edit-workspace">Workspace settings</button>
+          <div class="brand-title">
+            <span>Lead Search Agent</span>
+            <span class="brand-tag">AI Prospector</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="sidebar-action-area">
+        <button class="btn-new-campaign" id="btn-new-campaign">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          New Campaign
+        </button>
+      </div>
+
+      <div class="sidebar-section-title">Campaigns</div>
+      <div class="sidebar-campaigns-list" id="sidebar-campaigns">
+        <!-- Campaign items rendered dynamically -->
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="user-profile-btn" id="btn-open-workspace" title="Workspace Profile Settings">
+          <div class="user-profile-left">
+            <div class="user-avatar" id="sidebar-avatar">AG</div>
+            <div class="user-info">
+              <span class="user-name" id="sidebar-user-name">Your Workspace</span>
+              <span class="user-business" id="sidebar-business-name">Configure Profile</span>
+            </div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="app-workspace">
+      <!-- Top Navbar -->
+      <header class="workspace-navbar">
+        <div class="navbar-left">
+          <button class="sidebar-toggle-btn" id="btn-toggle-sidebar" aria-label="Toggle Sidebar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div class="navbar-title-wrap">
+            <span class="navbar-campaign-name" id="nav-campaign-title">New Campaign</span>
+            <span class="navbar-status-badge" id="nav-status-badge">
+              <span class="status-dot created"></span>
+              <span id="nav-status-text">Ready</span>
+            </span>
+          </div>
         </div>
-        
-        <form id="campaign-form" class="form-grid">
-          <input name="name" placeholder="Campaign name" required>
-          <input name="niche" placeholder="Target niche / industry" required>
-          <input name="location" placeholder="Location (City)" required>
-          <input name="country" placeholder="Country" required>
-          <input name="minimum_budget" placeholder="Minimum budget, e.g. $1000">
-          <input name="lead_count" type="number" min="1" max="100" value="10">
-          <textarea name="operator_instructions" placeholder="Optional notes or requirements for this campaign..."></textarea>
 
-          <fieldset>
-            <legend>Outreach Channels</legend>
-            <label><input type="checkbox" name="channels" value="Instagram" checked> Instagram</label>
-            <label><input type="checkbox" name="channels" value="LinkedIn" checked> LinkedIn</label>
-            <label><input type="checkbox" name="channels" value="Facebook" checked> Facebook</label>
-            <label><input type="checkbox" name="channels" value="Email" checked> Email</label>
-          </fieldset>
-          
-          <button type="submit">Create Campaign</button>
-        </form>
+        <div class="navbar-right">
+          <!-- View switcher tabs (visible when a campaign is active) -->
+          <div class="workspace-tabs" id="nav-campaign-tabs" hidden>
+            <button class="workspace-tab-btn active" data-view="view-pipeline">Pipeline</button>
+            <button class="workspace-tab-btn" data-view="view-drafts">Drafts Studio</button>
+            <button class="workspace-tab-btn" data-view="view-brief">Brief Strategy</button>
+          </div>
 
-        <div id="brief-section" class="brief-container" hidden>
-          <div class="section-head">
+          <div class="navbar-campaign-actions" id="nav-active-actions" hidden style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn-secondary" id="btn-nav-run-campaign" style="padding: 6px 12px; font-size: 12.5px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span id="btn-nav-run-text">Run Campaign</span>
+            </button>
+            <button class="btn-icon" id="btn-nav-delete-campaign" title="Delete Campaign" style="color: var(--status-hot); border-color: var(--status-hot-border);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              Delete
+            </button>
+          </div>
+
+          <button class="btn-icon" id="btn-refresh" title="Refresh Data">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Content Area -->
+      <div class="workspace-content">
+        <!-- 1. View: Empty / New Campaign Hero & Setup Form -->
+        <section class="view-panel active" id="view-setup-campaign">
+          <div class="hero-container">
+            <div class="hero-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              Autonomous Lead Intelligence
+            </div>
+            <h1 class="hero-heading">Find your next customers.</h1>
+            <p class="hero-subtitle">
+              The agent autonomously searches relevant companies across the web, analyzes their digital presence, scores fit against your ideal profile, and prepares tailored outreach drafts.
+            </p>
+          </div>
+
+          <div class="content-card">
+            <div class="card-header">
+              <div class="card-header-left">
+                <h3>Campaign Configuration</h3>
+                <p>Define your target niche, location, and preferred outreach channels</p>
+              </div>
+            </div>
+
+            <form id="campaign-form">
+              <div class="form-grid-3">
+                <div class="form-group">
+                  <label class="form-label">Campaign Name</label>
+                  <input class="input-field" name="name" placeholder="e.g. SF AI Startups" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Target Niche / Industry</label>
+                  <input class="input-field" name="niche" placeholder="e.g. B2B SaaS, Fitness Studios" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Target City / Region</label>
+                  <input class="input-field" name="location" placeholder="e.g. San Francisco, Kolkata" required>
+                </div>
+              </div>
+
+              <div class="form-grid-3" style="margin-top: 14px;">
+                <div class="form-group">
+                  <label class="form-label">Country</label>
+                  <input class="input-field" name="country" placeholder="e.g. United States, India" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Minimum Client Budget <span class="optional">Optional</span></label>
+                  <input class="input-field" name="minimum_budget" placeholder="e.g. $2,500/mo">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Target Lead Count</label>
+                  <input class="input-field" type="number" name="lead_count" min="1" max="100" value="10" required>
+                </div>
+              </div>
+
+              <div class="form-group full-width" style="margin-top: 14px;">
+                <label class="form-label">Special Operator Instructions <span class="optional">Optional</span></label>
+                <textarea class="textarea-field" name="operator_instructions" placeholder="Target verified decision makers with active social reels or booking funnels..."></textarea>
+              </div>
+
+              <div class="form-group full-width" style="margin-top: 14px;">
+                <label class="form-label">Outreach Channels</label>
+                <div class="channels-pill-group">
+                  <label class="channel-pill-checkbox">
+                    <input type="checkbox" name="channels" value="Instagram" checked>
+                    <span class="channel-pill-badge">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                      Instagram DM
+                    </span>
+                  </label>
+                  <label class="channel-pill-checkbox">
+                    <input type="checkbox" name="channels" value="LinkedIn" checked>
+                    <span class="channel-pill-badge">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                      LinkedIn
+                    </span>
+                  </label>
+                  <label class="channel-pill-checkbox">
+                    <input type="checkbox" name="channels" value="Facebook" checked>
+                    <span class="channel-pill-badge">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                      Facebook
+                    </span>
+                  </label>
+                  <label class="channel-pill-checkbox">
+                    <input type="checkbox" name="channels" value="Email" checked>
+                    <span class="channel-pill-badge">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                      Email
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="submit" class="btn-primary" id="btn-submit-campaign">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  Start Campaign
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- 2. View: Campaign Running Experience (Live Processing State) -->
+        <section class="view-panel" id="view-running-campaign">
+          <div class="running-agent-hero">
+            <div class="running-hero-top">
+              <div class="radar-wrap">
+                <div class="radar-pulse"></div>
+                <div>
+                  <div class="agent-status-label" id="running-step-title">Agent Actively Researching Leads</div>
+                  <div class="agent-sub-status" id="running-step-desc">Extracting company evidence and qualifying against ideal customer profiles...</div>
+                </div>
+              </div>
+              <button class="btn-secondary" id="btn-cancel-view-running">View Pipeline</button>
+            </div>
+
+            <!-- Stepper Progress -->
+            <div class="progress-stepper-wrap">
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="running-progress-bar" style="width: 35%;"></div>
+              </div>
+              <div class="workflow-steps-row">
+                <div class="wf-step-item active" id="step-init"><span class="wf-step-dot"></span> 1. Setup</div>
+                <div class="wf-step-item" id="step-search"><span class="wf-step-dot"></span> 2. Web Search</div>
+                <div class="wf-step-item" id="step-extract"><span class="wf-step-dot"></span> 3. Research &amp; Audit</div>
+                <div class="wf-step-item" id="step-score"><span class="wf-step-dot"></span> 4. 8-Factor Score</div>
+                <div class="wf-step-item" id="step-draft"><span class="wf-step-dot"></span> 5. Draft Outreach</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Counter Metrics -->
+          <div class="counters-grid">
+            <div class="counter-card">
+              <span class="counter-label">Companies Discovered</span>
+              <span class="counter-val" id="cnt-discovered">0</span>
+            </div>
+            <div class="counter-card">
+              <span class="counter-label">Qualified Leads</span>
+              <span class="counter-val" id="cnt-qualified" style="color: var(--accent-text);">0</span>
+            </div>
+            <div class="counter-card">
+              <span class="counter-label">Websites &amp; Profiles Analyzed</span>
+              <span class="counter-val" id="cnt-pages">0</span>
+            </div>
+            <div class="counter-card">
+              <span class="counter-label">Drafts Generated</span>
+              <span class="counter-val" id="cnt-drafts">0</span>
+            </div>
+          </div>
+
+          <!-- Live Activity Feed -->
+          <div class="activity-feed-panel">
+            <div class="activity-feed-header">
+              <div class="activity-feed-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                Real-Time Agent Activity Feed
+              </div>
+              <span class="navbar-status-badge running"><span class="status-dot running"></span> Live Stream</span>
+            </div>
+            <div class="activity-stream-list" id="running-activity-stream">
+              <!-- Activity log entries populated dynamically -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. View: Lead Pipeline Results -->
+        <section class="view-panel" id="view-pipeline">
+          <div class="metrics-summary-bar" id="pipeline-metrics-bar">
+            <!-- Populated dynamically -->
+          </div>
+
+          <div class="pipeline-toolbar">
+            <div class="toolbar-filters">
+              <div class="search-input-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input class="input-field" id="filter-search" placeholder="Search leads by name, city, niche...">
+              </div>
+
+              <select class="select-field" id="filter-priority" style="max-width: 160px;">
+                <option value="">All Priorities</option>
+                <option value="HOT">HOT (Score &gt;= 80)</option>
+                <option value="WARM">WARM (Score &gt;= 60)</option>
+                <option value="COLD">COLD (Score &gt;= 40)</option>
+                <option value="SKIP">SKIP (Score &lt; 40)</option>
+              </select>
+
+              <select class="select-field" id="filter-status" style="max-width: 170px;">
+                <option value="">All Statuses</option>
+                <option value="Qualified">Qualified</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Follow-up Due">Follow-up Due</option>
+                <option value="Not a Fit">Not a Fit</option>
+                <option value="Won">Won</option>
+              </select>
+            </div>
+
+            <div class="view-toggle-group">
+              <button class="view-toggle-btn active" id="btn-view-cards" title="Cards View">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                Cards
+              </button>
+              <button class="view-toggle-btn" id="btn-view-table" title="Table View">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                Table
+              </button>
+            </div>
+          </div>
+
+          <!-- Cards View Container -->
+          <div class="leads-cards-grid" id="pipeline-cards-container">
+            <!-- Lead item cards dynamically rendered -->
+          </div>
+
+          <!-- Table View Container -->
+          <div class="table-container" id="pipeline-table-container" style="display: none;">
+            <table class="lead-table-modern">
+              <thead>
+                <tr>
+                  <th>Priority</th>
+                  <th>Score</th>
+                  <th>Business Name</th>
+                  <th>Location</th>
+                  <th>Rec. Channel</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="pipeline-table-body">
+                <!-- Rows populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 4. View: Outreach Drafts Studio -->
+        <section class="view-panel" id="view-drafts">
+          <div class="content-card">
+            <div class="card-header">
+              <div class="card-header-left">
+                <h3>Manual Outreach Queue</h3>
+                <p>Review AI-personalized messages, request tweaks, and approve before sending</p>
+              </div>
+            </div>
+            <div class="drafts-queue-list" id="drafts-container">
+              <!-- Draft cards populated dynamically -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. View: Campaign Brief & Strategy Assistant -->
+        <section class="view-panel" id="view-brief">
+          <div class="content-card">
+            <div class="card-header">
+              <div class="card-header-left">
+                <h3>AI Strategy Assistant &amp; Targeting Brief</h3>
+                <p>Chat with the AI brief specialist to refine ICP criteria, buying signals, and offer angles</p>
+              </div>
+            </div>
+
+            <div class="chat-box-feed" id="brief-chat-history"></div>
+
+            <form id="brief-chat-form" class="chat-input-bar">
+              <input class="input-field" id="brief-chat-input" placeholder="Give targeting instructions, e.g. 'Target founders who recently hired'..." required>
+              <button type="submit" class="btn-primary" style="padding: 9px 16px;">Send</button>
+            </form>
+
+            <div class="content-card" style="background: var(--bg-input); border-color: var(--border-medium); margin-top: 20px;">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <h4 style="font-size: 15px; font-weight: 700;">Targeting &amp; ICP Strategy</h4>
+                  <p>Current active brief parameters used for scoring</p>
+                </div>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group full-width">
+                  <label class="form-label">Ideal Customer Profile (ICP)</label>
+                  <textarea class="textarea-field" id="brief-icp" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Industry Tiers <span class="optional">Comma separated</span></label>
+                  <input class="input-field" id="brief-tiers" placeholder="e.g. Health & Wellness, E-commerce">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Buying Signals <span class="optional">Comma separated</span></label>
+                  <input class="input-field" id="brief-signals" placeholder="e.g. Active ads, Recent funding">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Excluded Business Types <span class="optional">Comma separated</span></label>
+                  <input class="input-field" id="brief-excluded" placeholder="e.g. Franchises, Inactive pages">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Offer Angles <span class="optional">Comma separated</span></label>
+                  <input class="input-field" id="brief-angles" placeholder="e.g. Content Scaling, Direct Outreach">
+                </div>
+              </div>
+
+              <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                <button class="btn-primary" id="btn-save-brief">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                  Save &amp; Finalize Brief
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal 1: Lead Detail Inspector -->
+  <dialog class="modal-dialog" id="lead-modal">
+    <div class="modal-header-modern">
+      <div>
+        <h3 id="modal-lead-title" style="font-size: 17px; font-weight: 700;">Lead Details</h3>
+        <p id="modal-lead-subtitle" style="font-size: 12.5px; color: var(--text-muted);">Inspection &amp; Evidence Dossier</p>
+      </div>
+      <button class="btn-icon" id="btn-close-lead-modal" aria-label="Close modal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="modal-body-modern">
+      <div class="modal-tabs-header">
+        <button class="modal-tab-btn active" data-modaltab="tab-research">Research &amp; Evidence</button>
+        <button class="modal-tab-btn" data-modaltab="tab-audit">Audit &amp; Qualification</button>
+        <button class="modal-tab-btn" data-modaltab="tab-outreach">Outreach &amp; Drafts</button>
+        <button class="modal-tab-btn" data-modaltab="tab-activity">Timeline &amp; Status</button>
+      </div>
+
+      <!-- Tab: Research & Evidence -->
+      <div class="modal-tab-pane active" id="tab-research">
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="content-card" style="padding: 16px; margin-bottom: 0;">
+            <h4 style="font-size: 13.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;">Key Observation</h4>
+            <p id="lead-modal-obs" style="font-size: 14px; color: var(--text-primary); line-height: 1.5;"></p>
+          </div>
+
+          <div class="content-card" style="padding: 16px; margin-bottom: 0;">
+            <h4 style="font-size: 13.5px; font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;">Identified Growth Opportunity</h4>
+            <p id="lead-modal-opp" style="font-size: 14px; color: var(--text-primary); line-height: 1.5;"></p>
+          </div>
+
+          <div>
+            <h4 style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Verified Channels &amp; Links</h4>
+            <div class="lead-links-chips" id="lead-modal-links"></div>
+          </div>
+
+          <div>
+            <h4 style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Source Evidence URLs</h4>
+            <ul id="lead-modal-evidence" style="list-style: none; display: flex; flex-direction: column; gap: 6px;"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Audit & Qualification -->
+      <div class="modal-tab-pane" id="tab-audit">
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-input); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-medium);">
             <div>
-              <p class="eyebrow">AI BRIEF ASSISTANT (OPTIONAL)</p>
-              <h3>Refine Campaign Brief &amp; Targeting Strategy</h3>
+              <span style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Qualification Score</span>
+              <div style="font-size: 24px; font-weight: 800; font-family: var(--font-mono); color: var(--text-primary); margin-top: 2px;" id="modal-score-val">0</div>
             </div>
+            <div id="modal-priority-badge"></div>
           </div>
-          
-          <div class="chat-box" id="chat-history"></div>
 
-          <form id="chat-form" class="chat-input-row">
-            <input id="chat-input" placeholder="Type instructions, e.g., 'Target high-ticket coaches with active reels'..." required>
-            <button type="submit" class="quiet">Send</button>
-          </form>
-
-          <div id="brief-editor" class="brief-preview-panel" hidden>
-            <h4>Proposed Campaign Brief</h4>
-            <div class="form-grid">
-              <label class="full-width">
-                <span>Ideal Customer Profile</span>
-                <textarea id="brief-icp"></textarea>
-              </label>
-              <label>
-                <span>Industry Tiers</span>
-                <input id="brief-tiers" placeholder="Comma separated">
-              </label>
-              <label>
-                <span>Buying Signals</span>
-                <input id="brief-signals" placeholder="Comma separated">
-              </label>
-              <label>
-                <span>Excluded Types</span>
-                <input id="brief-excluded" placeholder="Comma separated">
-              </label>
-              <label>
-                <span>Offer Angles</span>
-                <input id="brief-angles" placeholder="Comma separated">
-              </label>
-            </div>
-            <button id="save-brief-btn">Finalize &amp; Update Brief</button>
+          <div class="content-card" style="padding: 16px; margin-bottom: 0;">
+            <h4 style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">What Is Working</h4>
+            <p id="audit-working-val" style="font-size: 13.5px; color: var(--text-primary);"></p>
           </div>
-        </div>
-      </section>
 
-      <section class="panel">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">CAMPAIGN DASHBOARD</p>
-            <h2>Campaign Overview</h2>
+          <div class="content-card" style="padding: 16px; margin-bottom: 0;">
+            <h4 style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">What Is Missing</h4>
+            <p id="audit-missing-val" style="font-size: 13.5px; color: var(--text-primary);"></p>
           </div>
-          <button class="quiet" id="refresh">Refresh Dashboard</button>
-        </div>
-        
-        <div id="campaigns" class="grid"></div>
-      </section>
 
-      <section id="tracker-section" class="panel" hidden>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">LEAD TRACKER</p>
-            <h2 id="tracker-title">Campaign Lead Pipeline</h2>
-          </div>
-          <div class="metrics-row" id="dashboard-metrics"></div>
-        </div>
-
-        <div class="tracker-toolbar">
-          <select id="filter-priority">
-            <option value="">All Priorities</option>
-            <option value="HOT">HOT (&gt;=80)</option>
-            <option value="WARM">WARM (&gt;=60)</option>
-            <option value="COLD">COLD (&gt;=40)</option>
-            <option value="SKIP">SKIP (&lt;40)</option>
-          </select>
-
-          <select id="filter-status">
-            <option value="">All Statuses</option>
-            <option value="Qualified">Qualified</option>
-            <option value="Contacted">Contacted</option>
-            <option value="Follow-up Due">Follow-up Due</option>
-            <option value="Not a Fit">Not a Fit</option>
-          </select>
-
-          <input id="search-tracker" placeholder="Search leads by name or location...">
-        </div>
-
-        <table class="lead-table">
-          <thead>
-            <tr>
-              <th>Priority</th>
-              <th>Score</th>
-              <th>Business Name</th>
-              <th>Location</th>
-              <th>Rec. Channel</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="tracker-table-body"></tbody>
-        </table>
-      </section>
-
-      <section class="panel">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">DRAFT STUDIO</p>
-            <h2>Manual Outreach Queue</h2>
-          </div>
-          <span class="muted">Approve first. Copy message &amp; send manually.</span>
-        </div>
-        <div id="drafts"></div>
-      </section>
-    </section>
-
-    <dialog id="lead-modal" class="lead-modal">
-      <div class="modal-header">
-        <h3 id="modal-business-name">Lead Details</h3>
-        <button id="close-modal-btn" class="quiet">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="tab-buttons">
-          <button class="tab-btn active" data-tab="tab-research">Research &amp; Evidence</button>
-          <button class="tab-btn" data-tab="tab-audit">Audit &amp; Qualification</button>
-          <button class="tab-btn" data-tab="tab-outreach">Outreach &amp; Drafts</button>
-          <button class="tab-btn" data-tab="tab-activity">Activities &amp; History</button>
-        </div>
-
-        <div id="tab-research" class="tab-content active">
-          <p><strong>Observation:</strong> <span id="lead-obs"></span></p>
-          <p><strong>Opportunity:</strong> <span id="lead-opp"></span></p>
-          <div id="lead-links-row" class="links-row"></div>
-          <h4>Source Evidence</h4>
-          <ul id="lead-evidence-list"></ul>
-        </div>
-
-        <div id="tab-audit" class="tab-content">
-          <div class="score-breakdown">
-            <h4>Qualification Score: <span id="modal-score"></span> (<span id="modal-priority"></span>)</h4>
-            <ul id="score-factors-list"></ul>
-          </div>
-          <h4>Audit Profile</h4>
-          <p><strong>What is Working:</strong> <span id="audit-working"></span></p>
-          <p><strong>What is Missing:</strong> <span id="audit-missing"></span></p>
-          <p><strong>Recommended Offer:</strong> <span id="audit-offer"></span></p>
-          <p><strong>Personalization Note:</strong> <span id="audit-note"></span></p>
-        </div>
-
-        <div id="tab-outreach" class="tab-content">
-          <p><strong>Recommended Channel:</strong> <span id="modal-rec-chan"></span></p>
-          <p class="muted" id="modal-rec-reason"></p>
-          <div id="modal-drafts-container"></div>
-        </div>
-
-        <div id="tab-activity" class="tab-content">
-          <h4>Activity Timeline</h4>
-          <ul id="activity-timeline"></ul>
-          <hr>
-          <h4>Status &amp; Follow-up Override</h4>
-          <div class="form-grid">
-            <select id="update-lead-status-sel">
-              <option value="Qualified">Qualified</option>
-              <option value="Contacted">Contacted</option>
-              <option value="Follow-up Due">Follow-up Due</option>
-              <option value="Not a Fit">Not a Fit</option>
-              <option value="Won">Won</option>
-            </select>
-            <button id="save-lead-status-btn">Change Status</button>
+          <div class="content-card" style="padding: 16px; margin-bottom: 0;">
+            <h4 style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">Recommended Service Offer</h4>
+            <p id="audit-offer-val" style="font-size: 13.5px; color: var(--text-primary);"></p>
           </div>
         </div>
       </div>
-    </dialog>
-  </main>
+
+      <!-- Tab: Outreach & Drafts -->
+      <div class="modal-tab-pane" id="tab-outreach">
+        <div style="margin-bottom: 16px; background: var(--bg-input); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+          <span style="font-size: 12px; color: var(--text-muted);">Recommended Channel:</span>
+          <strong id="modal-rec-chan-val" style="color: var(--accent-text); margin-left: 6px;"></strong>
+          <p id="modal-rec-reason-val" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;"></p>
+        </div>
+        <div id="modal-drafts-list" style="display: flex; flex-direction: column; gap: 14px;"></div>
+      </div>
+
+      <!-- Tab: Timeline & Status Override -->
+      <div class="modal-tab-pane" id="tab-activity">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <h4 style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 10px;">Pipeline Status Override</h4>
+            <div style="display: flex; gap: 10px;">
+              <select class="select-field" id="modal-status-select" style="flex: 1;">
+                <option value="Qualified">Qualified</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Follow-up Due">Follow-up Due</option>
+                <option value="Not a Fit">Not a Fit</option>
+                <option value="Won">Won</option>
+              </select>
+              <button class="btn-primary" id="btn-save-modal-status" style="white-space: nowrap;">Update Status</button>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+            <h4 style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 10px;">Activity Timeline</h4>
+            <ul id="modal-timeline-list" style="list-style: none; display: flex; flex-direction: column; gap: 8px;"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal 2: Workspace Profile Settings -->
+  <dialog class="modal-dialog" id="workspace-modal">
+    <div class="modal-header-modern">
+      <div>
+        <h3 style="font-size: 17px; font-weight: 700;">Workspace Settings</h3>
+        <p style="font-size: 12.5px; color: var(--text-muted);">Personalize your agency profile and tone of voice</p>
+      </div>
+      <button class="btn-icon" id="btn-close-workspace-modal" aria-label="Close modal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="modal-body-modern">
+      <form id="workspace-form">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Operator / Your Name</label>
+            <input class="input-field" name="person_name" placeholder="e.g. Alex Morgan" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Agency / Business Name</label>
+            <input class="input-field" name="business_name" placeholder="e.g. Apex Growth Agency" required>
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label">Official Website <span class="optional">Optional</span></label>
+            <input class="input-field" name="website" type="url" placeholder="https://youragency.com">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label">Service Offer Description</label>
+            <textarea class="textarea-field" name="service_offer" placeholder="What core transformation or service do you deliver?" required></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label">Target Positioning Statement</label>
+            <textarea class="textarea-field" name="positioning" placeholder="Who do you help and how are you positioned uniquely?"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Outreach Tone of Voice</label>
+            <input class="input-field" name="tone" placeholder="e.g. Warm, concise, and consultative" value="Warm and conversational">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Preferred Call-to-Action (CTA)</label>
+            <input class="input-field" name="call_to_action" placeholder="e.g. Grab a 10-min intro chat">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Instagram Profile URL <span class="optional">Optional</span></label>
+            <input class="input-field" name="instagram" type="url" placeholder="https://instagram.com/yourhandle">
+          </div>
+          <div class="form-group">
+            <label class="form-label">LinkedIn Profile URL <span class="optional">Optional</span></label>
+            <input class="input-field" name="linkedin" type="url" placeholder="https://linkedin.com/in/yourprofile">
+          </div>
+        </div>
+
+        <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn-secondary" id="btn-cancel-workspace">Cancel</button>
+          <button type="submit" class="btn-primary">Save Workspace Profile</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal 3: In-App Confirmation Dialog -->
+  <dialog class="modal-dialog confirm-dialog" id="confirm-modal">
+    <div class="confirm-modal-inner">
+      <div class="confirm-icon-badge danger" id="confirm-modal-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      </div>
+      <div class="confirm-content-area">
+        <h3 class="confirm-heading" id="confirm-modal-title">Delete Campaign</h3>
+        <p class="confirm-desc" id="confirm-modal-msg">Are you sure you want to delete this campaign? All discovered leads, evidence, and generated outreach drafts will be permanently removed.</p>
+      </div>
+    </div>
+    <div class="confirm-footer-actions">
+      <button type="button" class="btn-secondary" id="confirm-btn-cancel">Cancel</button>
+      <button type="button" class="btn-danger" id="confirm-btn-proceed">Delete Campaign</button>
+    </div>
+  </dialog>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

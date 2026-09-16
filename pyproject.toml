@@ -1,7 +1,7 @@
 [project]
 name = "lead-agent"
 version = "0.1.0"
-description = "Production-grade local sales agent for The Social Girl"
+description = "Production-grade autonomous AI lead generation and sales outreach agent"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115,<1.0",

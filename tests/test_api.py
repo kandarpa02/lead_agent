@@ -27,12 +27,12 @@ client = TestClient(app)
 def test_workspace_profile_crud():
     resp = client.put("/api/workspace", json={
         "person_name": "Jane Doe",
-        "business_name": "The Social Girl",
-        "service_offer": "Social Media Management & Strategy",
-        "website": "https://thesocialgirl.com",
-        "positioning": "Helping premium coaches grow",
+        "business_name": "Apex Growth Agency",
+        "service_offer": "B2B Lead Generation & Growth Strategy",
+        "website": "https://apexgrowth.example.com",
+        "positioning": "Helping B2B companies scale outreach",
         "tone": "Warm and conversational",
-        "call_to_action": "Book a 15-minute call",
+        "call_to_action": "Book a 15-minute discovery call",
     })
     assert resp.status_code == 200
     assert resp.json()["person_name"] == "Jane Doe"

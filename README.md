@@ -1,6 +1,6 @@
-# Sales Agent — PDF Prospecting Methodology
+# Lead Search Agent — Autonomous Prospecting & Sales Outreach
 
-An Ollama-backed, OpenAI Agents SDK sales workflow aligned with **The Social Girl Prospecting Methodology**. A campaign is initialized with structured targeting and an optional chat brief assistant, researched on the public web across multiple sources, qualified using an 8-factor scoring matrix, audited for social media opportunities, and converted into channel-specific outreach drafts (Instagram, LinkedIn, Facebook, Email) paused for human review.
+An Ollama-backed, OpenAI Agents SDK sales workflow engineered for high-precision B2B lead discovery and personalized outreach. A campaign is initialized with structured targeting and an optional chat brief assistant, researched on the public web across multiple sources, qualified using an 8-factor scoring matrix, audited for growth opportunities, and converted into channel-specific outreach drafts (Instagram, LinkedIn, Facebook, Email) paused for human review.
 
 ## Workflow
 
