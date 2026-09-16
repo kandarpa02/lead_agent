@@ -2,11 +2,37 @@
 
 **Local-first AI prospecting and human-approved outreach for focused B2B campaigns.**
 
-Lead Search Agent turns a campaign brief into an evidence-backed prospecting workflow. It researches public business websites and search results, scores leads against a transparent qualification matrix, identifies growth opportunities, and creates channel-specific outreach drafts for review. The application runs locally with [Ollama](https://ollama.com/), [FastAPI](https://fastapi.tiangolo.com/), PostgreSQL, and the OpenAI Agents SDK.
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Runtime-Docker%20Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-See%20LICENSE-6B7280)](LICENSE)
 
-> This is a portfolio-ready reference implementation for responsible sales automation. It deliberately keeps social messaging human-operated and requires approval before outreach is sent.
+Lead Search Agent is an open-source portfolio project for research-driven B2B prospecting. It combines deterministic qualification, public-web evidence, local AI orchestration, and a human approval workflow in one deployable application.
 
-## What It Does
+**Repository:** [github.com/kandarpa02/lead_agent](https://github.com/kandarpa02/lead_agent)
+
+## Contents
+
+- [Overview](#overview)
+- [Capabilities](#capabilities)
+- [Workflow](#workflow)
+- [Architecture](#architecture)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [API](#api)
+- [Safety and operating boundaries](#safety-and-operating-boundaries)
+- [Development](#development)
+- [Operations and troubleshooting](#operations-and-troubleshooting)
+- [Production deployment](#production-deployment)
+- [License](#license)
+
+## Overview
+
+Lead Search Agent turns a campaign brief into an evidence-backed prospecting workflow. It researches public business websites and search results, scores leads against a transparent qualification matrix, identifies growth opportunities, and creates channel-specific outreach drafts for review.
+
+The application runs locally with [Ollama](https://ollama.com/), [FastAPI](https://fastapi.tiangolo.com/), PostgreSQL, and the OpenAI Agents SDK. Local model execution keeps business context and research orchestration under the operator's control.
+
+## Capabilities
 
 - Builds a structured campaign brief from targeting criteria and an optional AI-assisted chat.
 - Discovers public prospects using industry, location, growth-signal, and social-profile search patterns.
@@ -17,7 +43,7 @@ Lead Search Agent turns a campaign brief into an evidence-backed prospecting wor
 - Provides a dashboard for lead status, evidence, activities, follow-ups, and draft approvals.
 - Sends approved email drafts through Gmail when Gmail OAuth is configured.
 
-## Product Workflow
+## Workflow
 
 ```text
 Workspace setup
@@ -80,7 +106,7 @@ If your Ollama installation exposes a different model, use that model name in th
 ### 2. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/kandarpa02/lead_agent.git
 cd lead_agent
 ```
 
@@ -129,7 +155,7 @@ Visit [http://localhost:8000](http://localhost:8000) and complete the workspace 
 6. Approve and revise drafts before contacting a prospect.
 7. Send social messages manually. Approved email drafts can be sent through Gmail when configured.
 
-## Configuration Notes
+## Configuration
 
 ### Ollama connectivity
 
@@ -154,7 +180,7 @@ Email delivery is disabled until Google OAuth is configured. To enable it:
 
 The application requests the `gmail.send` scope and only sends drafts that have passed the in-app approval step.
 
-## API Overview
+## API
 
 The frontend uses the FastAPI JSON API. The most important endpoints are:
 
@@ -208,7 +234,7 @@ Create a virtual environment and install development dependencies:
 
 ```powershell
 python -m venv .venv
-.\\.venv\\Scripts\\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
@@ -258,7 +284,7 @@ Common issues:
 | Data disappears unexpectedly | Avoid `docker compose down -v`; it deletes the PostgreSQL volume |
 | Gmail send fails | Confirm OAuth files, Gmail API enablement, and the authorization scope |
 
-## Production Deployment Checklist
+## Production Deployment
 
 This repository is designed to be easy to demonstrate locally and straightforward to harden for deployment. Before serving real users or exposing it publicly:
 
