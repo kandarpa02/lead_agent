@@ -7,7 +7,7 @@
 [![Docker](https://img.shields.io/badge/Runtime-Docker%20Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-See%20LICENSE-6B7280)](LICENSE)
 
-Lead Search Agent is an open-source portfolio project for research-driven B2B prospecting. It combines deterministic qualification, public-web evidence, local AI orchestration, and a human approval workflow in one deployable application.
+Lead Search Agent is an open-source platform for research-driven B2B prospecting. It combines deterministic qualification, public-web evidence, local AI orchestration, and a human approval workflow in one deployable application.
 
 **Repository:** [github.com/kandarpa02/lead_agent](https://github.com/kandarpa02/lead_agent)
 
