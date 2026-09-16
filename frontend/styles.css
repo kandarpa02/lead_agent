@@ -192,7 +192,7 @@ html, body {
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 .btn-new-campaign:hover {
@@ -238,7 +238,7 @@ html, body {
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
   position: relative;
   text-align: left;
 }
@@ -289,7 +289,7 @@ html, body {
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
 }
 
 .campaign-nav-item:hover .btn-campaign-delete,
@@ -333,6 +333,7 @@ html, body {
   background: var(--accent);
   box-shadow: 0 0 8px var(--accent);
   animation: pulse-dot 1.5s infinite;
+  will-change: transform, opacity;
 }
 .status-dot.awaiting, .status-dot.awaiting-approval { background: #f59e0b; }
 .status-dot.completed { background: #10b981; }
@@ -360,7 +361,7 @@ html, body {
   border-radius: var(--radius-md);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .user-profile-btn:hover {
@@ -425,8 +426,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-subtle);
-  background: rgba(15, 18, 24, 0.7);
-  backdrop-filter: blur(12px);
+  background: var(--bg-sidebar);
   z-index: 20;
 }
 
@@ -507,7 +507,7 @@ html, body {
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-icon:hover {
@@ -540,7 +540,7 @@ html, body {
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .workspace-tab-btn:hover {
@@ -557,16 +557,20 @@ html, body {
 .workspace-content {
   flex: 1;
   overflow-y: auto;
-  padding: 32px;
-  max-width: 1200px;
+  overflow-x: hidden;
+  padding: 32px 24px;
   width: 100%;
-  margin: 0 auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* View Sections */
 .view-panel {
   display: none;
-  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .view-panel.active {
@@ -692,7 +696,7 @@ html, body {
   color: var(--text-primary);
   font-family: var(--font-main);
   font-size: 13.5px;
-  transition: all 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .input-field:focus, .textarea-field:focus, .select-field:focus {
@@ -739,7 +743,7 @@ html, body {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   user-select: none;
 }
 
@@ -769,7 +773,7 @@ html, body {
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   box-shadow: 0 2px 12px var(--accent-glow);
 }
 
@@ -803,7 +807,7 @@ html, body {
   justify-content: center;
   gap: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-secondary:hover {
@@ -820,7 +824,7 @@ html, body {
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-danger:hover {
@@ -947,6 +951,7 @@ html, body {
   border-radius: 50%;
   border: 2px solid var(--accent);
   animation: radar-expand 1.8s infinite cubic-bezier(0, 0.2, 0.8, 1);
+  will-change: transform, opacity;
 }
 
 @keyframes radar-expand {
@@ -984,6 +989,7 @@ html, body {
   background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #10b981 100%);
   background-size: 200% 100%;
   animation: shimmer-progress 2s infinite linear;
+  will-change: background-position;
   border-radius: var(--radius-full);
   transition: width 0.4s ease;
 }
@@ -1083,6 +1089,7 @@ html, body {
 }
 
 .activity-stream-list {
+  contain: layout paint;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1134,6 +1141,7 @@ html, body {
 }
 
 .metric-pill-card {
+  contain: content;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -1141,7 +1149,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .metric-pill-card:hover {
@@ -1242,20 +1250,20 @@ html, body {
 }
 
 .lead-item-card {
+  contain: content;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 18px;
   display: flex;
   flex-direction: column;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   position: relative;
 }
 
 .lead-item-card:hover {
   background: var(--bg-surface-elevated);
   border-color: var(--border-medium);
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
@@ -1350,7 +1358,7 @@ html, body {
   font-size: 11px;
   color: var(--text-secondary);
   text-decoration: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .link-chip:hover {
@@ -1376,6 +1384,7 @@ html, body {
 
 /* Leads Table View */
 .table-container {
+  contain: layout paint;
   width: 100%;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -1421,6 +1430,7 @@ html, body {
 }
 
 .draft-card-modern {
+  contain: content;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -1542,7 +1552,7 @@ html, body {
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, border-bottom-color 0.15s ease;
 }
 
 .modal-tab-btn:hover {

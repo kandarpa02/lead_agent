@@ -180,6 +180,9 @@ function promptConfirm({ title = 'Confirm Action', message = 'Are you sure you w
 }
 
 async function deleteCampaign(campaignId, campaignName) {
+  if (!confirm(`Delete campaign "${campaignName}"?\n\nThis will permanently remove all associated leads, evidence, and drafts.`)) {
+    return;
+  }
   const confirmed = await promptConfirm({
     title: `Delete "${campaignName}"?`,
     message: 'Are you sure you want to permanently delete this campaign? All discovered leads, evidence, and generated outreach drafts will be removed.',
@@ -230,6 +233,7 @@ async function loadWorkspace() {
 }
 
 // 2. Campaigns List & Sidebar
+let cachedCampaignsKey = '';
 async function loadCampaigns() {
   try {
     const campaigns = await request('/api/campaigns');
@@ -241,6 +245,7 @@ async function loadCampaigns() {
           No campaigns found.<br>Create one to start prospecting.
         </div>
       `;
+      cachedCampaignsKey = '';
       activeCampaignId = null;
       currentCampaign = null;
       updateNavbarState(null);
@@ -252,49 +257,54 @@ async function loadCampaigns() {
       activeCampaignId = campaigns[0].id;
     }
 
-    container.innerHTML = campaigns.map((c) => {
-      const isSelected = c.id === activeCampaignId;
-      const statusClass = (c.status || 'created').toLowerCase().replace(/\s+/g, '-');
-      return `
-        <div class="campaign-nav-item ${isSelected ? 'active' : ''}" data-campaign-id="${c.id}">
-          <div class="campaign-nav-row">
-            <span class="campaign-nav-name">${esc(c.name)}</span>
-            <div class="campaign-nav-actions">
-              <span class="status-dot ${statusClass}" title="${esc(c.status)}"></span>
-              <button class="btn-campaign-delete" data-delete-campaign="${c.id}" data-campaign-name="${esc(c.name)}" title="Delete campaign">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
+    const campaignsKey = campaigns.map((c) => `${c.id}:${c.status}:${c.name}:${c.id === activeCampaignId}`).join('|');
+    if (campaignsKey !== cachedCampaignsKey) {
+      cachedCampaignsKey = campaignsKey;
+      container.innerHTML = campaigns.map((c) => {
+        const isSelected = c.id === activeCampaignId;
+        const statusClass = (c.status || 'created').toLowerCase().replace(/\s+/g, '-');
+        return `
+          <div class="campaign-nav-item ${isSelected ? 'active' : ''}" data-campaign-id="${c.id}">
+            <div class="campaign-nav-row">
+              <span class="campaign-nav-name">${esc(c.name)}</span>
+              <div class="campaign-nav-actions">
+                <span class="status-dot ${statusClass}" title="${esc(c.status)}"></span>
+                <button class="btn-campaign-delete" data-delete-campaign="${c.id}" data-campaign-name="${esc(c.name)}" title="Delete campaign">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="campaign-nav-meta">
+              <span>${esc(c.niche || '')}</span>
+              <span>·</span>
+              <span>${esc(c.location || '')}</span>
             </div>
           </div>
-          <div class="campaign-nav-meta">
-            <span>${esc(c.niche || '')}</span>
-            <span>·</span>
-            <span>${esc(c.location || '')}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
 
-    // Attach click events
-    container.querySelectorAll('.campaign-nav-item').forEach((item) => {
-      item.onclick = (e) => {
-        if (e.target.closest('.btn-campaign-delete')) return;
-        selectCampaign(item.dataset.campaignId);
-      };
-    });
+      // Attach click events
+      container.querySelectorAll('.campaign-nav-item').forEach((item) => {
+        item.onclick = (e) => {
+          if (e.target.closest('.btn-campaign-delete')) return;
+          selectCampaign(item.dataset.campaignId);
+        };
+      });
 
-    container.querySelectorAll('.btn-campaign-delete').forEach((btn) => {
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        deleteCampaign(btn.dataset.deleteCampaign, btn.dataset.campaignName);
-      };
-    });
+      container.querySelectorAll('.btn-campaign-delete').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          deleteCampaign(btn.dataset.deleteCampaign, btn.dataset.campaignName);
+        };
+      });
+    }
 
     if (activeCampaignId) {
-      await selectCampaign(activeCampaignId, false);
+      const selected = campaigns.find((c) => c.id === activeCampaignId);
+      await selectCampaign(activeCampaignId, false, selected);
     }
   } catch (err) {
     console.error('Error loading campaigns:', err);
@@ -302,10 +312,14 @@ async function loadCampaigns() {
 }
 
 // 3. Campaign Selection & Dashboard
-async function selectCampaign(campaignId, forcePipelineView = true) {
+async function selectCampaign(campaignId, forcePipelineView = true, preloadedCampaign = null) {
   activeCampaignId = campaignId;
-  const campaigns = await request('/api/campaigns');
-  currentCampaign = campaigns.find((c) => c.id === campaignId);
+  if (preloadedCampaign && preloadedCampaign.id === campaignId) {
+    currentCampaign = preloadedCampaign;
+  } else {
+    const campaigns = await request('/api/campaigns');
+    currentCampaign = campaigns.find((c) => c.id === campaignId);
+  }
   if (!currentCampaign) return;
 
   updateNavbarState(currentCampaign);
@@ -925,10 +939,14 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#pipeline-table-container').style.display = 'block';
   };
 
-  // Filters & Search in Pipeline
+  // Filters & Search in Pipeline (Debounced search to eliminate layout thrashing)
+  let searchDebounceTimer = null;
   $('#filter-priority').onchange = renderLeads;
   $('#filter-status').onchange = renderLeads;
-  $('#filter-search').oninput = renderLeads;
+  $('#filter-search').oninput = () => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(renderLeads, 120);
+  };
 
   // Running View "View Pipeline" Override
   $('#btn-cancel-view-running').onclick = () => {
@@ -1055,12 +1073,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Polling for real-time campaign updates
-  setInterval(() => {
-    if (!document.querySelector('dialog[open], .draft-revise-input:focus, .draft-body-input:focus, #brief-chat-input:focus')) {
-      if (activeCampaignId && currentCampaign && ['Queued', 'Researching', 'Qualifying', 'Drafting'].includes(currentCampaign.status)) {
-        refresh().catch(() => {});
-      }
+  // Targeted Polling for real-time campaign updates (avoids full DOM rebuild during scroll)
+  setInterval(async () => {
+    if (document.querySelector('dialog[open], .draft-revise-input:focus, .draft-body-input:focus, #brief-chat-input:focus')) {
+      return;
     }
-  }, 3500);
+    if (!activeCampaignId || !currentCampaign) return;
+
+    const isRunning = ['queued', 'researching', 'qualifying', 'drafting'].includes((currentCampaign.status || '').toLowerCase());
+    if (!isRunning) return;
+
+    try {
+      const updatedCampaign = await request(`/api/campaigns/${activeCampaignId}`);
+      if (!updatedCampaign) return;
+
+      const stillRunning = ['queued', 'researching', 'qualifying', 'drafting'].includes((updatedCampaign.status || '').toLowerCase());
+      currentCampaign = updatedCampaign;
+
+      if (stillRunning) {
+        updateNavbarState(currentCampaign);
+        renderRunningView(currentCampaign);
+      } else {
+        // Run completed or changed status: trigger a single refresh
+        showToast(`Campaign ${updatedCampaign.name}: ${updatedCampaign.status}`, 'info');
+        await refresh();
+      }
+    } catch (err) {
+      console.warn('Polling error:', err);
+    }
+  }, 3000);
 });
