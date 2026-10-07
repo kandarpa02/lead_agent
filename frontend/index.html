@@ -40,6 +40,10 @@
       </div>
 
       <div class="sidebar-footer">
+        <div class="sidebar-ai-actions">
+          <button class="btn-icon" id="btn-open-ai-provider" title="Configure AI provider">AI Provider</button>
+          <button class="btn-icon" id="btn-open-models" title="Browse available models">Models</button>
+        </div>
         <button class="user-profile-btn" id="btn-open-workspace" title="Workspace Profile Settings">
           <div class="user-profile-left">
             <div class="user-avatar" id="sidebar-avatar">AG</div>
@@ -584,6 +588,52 @@
           <button type="submit" class="btn-primary">Save Workspace Profile</button>
         </div>
       </form>
+    </div>
+  </dialog>
+
+  <dialog class="modal-dialog ai-provider-dialog" id="ai-provider-modal">
+    <div class="modal-header-modern">
+      <div>
+        <h3 style="font-size: 17px; font-weight: 700;">AI Provider</h3>
+        <p style="font-size: 12.5px; color: var(--text-muted);">Connect an OpenAI-compatible API endpoint</p>
+      </div>
+      <button class="btn-icon" id="btn-close-ai-provider" aria-label="Close provider settings">Close</button>
+    </div>
+    <div class="modal-body-modern">
+      <form id="ai-provider-form">
+        <div class="form-group">
+          <label class="form-label" for="ai-provider-base-url">API Base URL</label>
+          <input class="input-field" id="ai-provider-base-url" name="base_url" type="url"
+            placeholder="https://api.example.com/v1" required>
+        </div>
+        <div class="form-group" style="margin-top: 16px;">
+          <label class="form-label" for="ai-provider-api-key">API Key</label>
+          <input class="input-field" id="ai-provider-api-key" name="api_key" type="password"
+            autocomplete="new-password" placeholder="Required for first connection; blank keeps the saved key">
+        </div>
+        <p id="ai-provider-status" class="ai-provider-status">No provider connected yet.</p>
+        <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn-secondary" id="btn-cancel-ai-provider">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-save-ai-provider">Connect &amp; Browse Models</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog class="modal-dialog models-drawer" id="models-drawer">
+    <div class="modal-header-modern">
+      <div>
+        <h3 style="font-size: 17px; font-weight: 700;">Available Models</h3>
+        <p style="font-size: 12.5px; color: var(--text-muted);" id="models-provider-label">Connect a provider to load its models.</p>
+      </div>
+      <button class="btn-icon" id="btn-close-models" aria-label="Close models drawer">Close</button>
+    </div>
+    <div class="models-drawer-toolbar">
+      <button type="button" class="btn-secondary" id="btn-refresh-models">Refresh models</button>
+      <button type="button" class="btn-secondary" id="btn-edit-ai-provider">Provider settings</button>
+    </div>
+    <div class="models-list" id="models-list" aria-live="polite">
+      <p class="models-empty">Connect an API provider to view available models.</p>
     </div>
   </dialog>
 

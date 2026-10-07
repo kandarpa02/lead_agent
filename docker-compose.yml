@@ -6,8 +6,6 @@ services:
         required: false
     environment:
       DATABASE_URL: postgresql+psycopg://lead_agent:lead_agent@db:5432/lead_agent
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b-cloud}
     ports:
       - "8000:8000"
     depends_on:
@@ -30,8 +28,6 @@ services:
         required: false
     environment:
       DATABASE_URL: postgresql+psycopg://lead_agent:lead_agent@db:5432/lead_agent
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b-cloud}
     depends_on:
       db:
         condition: service_healthy

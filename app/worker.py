@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 from sqlalchemy import select
 
+from app.ai_provider import resolve_ai_settings
 from app.agents_workflow import draft_outreach, research_campaign
 from app.config import get_settings
 from app.constants import LeadStatus, PriorityTier
@@ -65,7 +66,6 @@ def _determine_recommended_channel(lead_data: dict[str, Any], campaign_channels:
 
 
 async def execute_run(run_id: str) -> None:
-    settings = get_settings()
     with SessionLocal() as db:
         run = db.get(CampaignRun, run_id)
         campaign = db.get(Campaign, run.campaign_id) if run else None
@@ -74,6 +74,7 @@ async def execute_run(run_id: str) -> None:
 
         current_step_obj: WorkflowStep | None = None
         try:
+            settings = resolve_ai_settings(get_settings(), db)
             profile_record = db.get(WorkspaceProfile, 1)
             if profile_record is None:
                 raise RuntimeError("Complete workspace setup before running a campaign")

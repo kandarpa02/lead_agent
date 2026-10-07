@@ -85,6 +85,16 @@ class WorkspaceProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class AIProviderConfiguration(Base):
+    __tablename__ = "ai_provider_configuration"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    base_url: Mapped[str] = mapped_column(String(1000))
+    api_key: Mapped[str] = mapped_column(Text)
+    selected_model: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class Lead(Base):
     __tablename__ = "leads"
 

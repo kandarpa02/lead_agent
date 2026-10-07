@@ -30,7 +30,7 @@ Lead Search Agent is an open-source platform for research-driven B2B prospecting
 
 Lead Search Agent turns a campaign brief into an evidence-backed prospecting workflow. It researches public business websites and search results, scores leads against a transparent qualification matrix, identifies growth opportunities, and creates channel-specific outreach drafts for review.
 
-The application runs locally with [Ollama](https://ollama.com/), [FastAPI](https://fastapi.tiangolo.com/), PostgreSQL, and the OpenAI Agents SDK. Local model execution keeps business context and research orchestration under the operator's control.
+The application uses [FastAPI](https://fastapi.tiangolo.com/), PostgreSQL, and the OpenAI Agents SDK. Connect any OpenAI-compatible model API from the dashboard by entering its base URL and API key, then choose an available model.
 
 ## Capabilities
 
@@ -68,70 +68,50 @@ FastAPI API (:8000) ---- PostgreSQL (:5432)
 	|                         |
 	+---- durable campaign queue ---- Worker
 	|
-	+---- OpenAI-compatible HTTP ---- Ollama on host (:11434)
+	+---- OpenAI-compatible HTTP ---- configured AI API
 ```
 
-The Compose stack contains the API, background worker, and PostgreSQL. Ollama runs on the host machine so its model cache is managed by Ollama rather than by the application image. On Docker Desktop, containers reach the host through `host.docker.internal`.
+The Compose stack contains the API, background worker, and PostgreSQL. The API and worker use the provider settings saved through the dashboard.
 
 ## Prerequisites
 
 Install the following before starting:
 
 - [Docker Desktop](https://docs.docker.com/desktop/) with Compose enabled
-- [Ollama](https://ollama.com/download) for Windows, macOS, or Linux
+- An API key for an OpenAI-compatible model provider
 - Git
-- Enough memory and disk space for the selected local model; larger models need substantially more resources
 
 The documented path uses Docker for the application and database. A local Python environment is only needed for development commands such as tests and linting.
 
 ## Quick Start
 
-### 1. Start Ollama
-
-Open a terminal and start the Ollama server:
-
-```bash
-ollama serve
-```
-
-Keep this terminal running. In a second terminal, verify that Ollama responds and download the default model:
-
-```bash
-ollama list
-ollama pull gpt-oss:20b-cloud
-```
-
-If your Ollama installation exposes a different model, use that model name in the configuration step below. You can inspect available models with `ollama list`.
-
-### 2. Clone the repository
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/kandarpa02/lead_agent.git
 cd lead_agent
 ```
 
-### 3. Configure the application
+### 2. Configure the application
 
-Create a `.env` file in the repository root. The file is ignored by Git and is optional for the defaults:
+Create a `.env` file in the repository root for application-level settings. Provider credentials are added in the dashboard and stored with the application configuration.
 
 ```dotenv
-OLLAMA_MODEL=gpt-oss:20b-cloud
+AI_TIMEOUT_SECONDS=90
 ```
 
 Useful settings:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `OLLAMA_MODEL` | `gpt-oss:20b-cloud` | Model name already installed in Ollama |
-| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` in Compose | Ollama HTTP endpoint |
-| `OLLAMA_TIMEOUT_SECONDS` | `90` | Model request timeout |
+| `AI_TIMEOUT_SECONDS` | `90` | AI provider request timeout |
 | `DATABASE_URL` | Compose-managed PostgreSQL URL | SQLAlchemy database connection |
 | `GMAIL_CREDENTIALS_FILE` | `credentials.json` | Google OAuth client file for optional email sending |
 | `GMAIL_TOKEN_FILE` | `token.json` | Local Gmail OAuth token cache |
 
 Do not commit `.env`, Google client secrets, OAuth tokens, or other credentials.
 
-### 4. Build and start the stack
+### 3. Build and start the stack
 
 From the repository directory:
 
@@ -141,7 +121,9 @@ docker compose up --build
 
 On the first run, the API container applies all Alembic migrations before starting FastAPI. The worker waits for the database and API health checks, then begins consuming queued campaign runs.
 
-### 5. Open the dashboard
+### 4. Open the dashboard
+
+Choose **AI Provider**, enter an OpenAI-compatible API base URL (for example, `https://api.openai.com/v1`) and API key, then connect. The Models drawer lists models returned by the provider; select one before using AI features.
 
 Visit [http://localhost:8000](http://localhost:8000) and complete the workspace setup wizard. The API documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs), and health endpoints are available at [http://localhost:8000/health](http://localhost:8000/health) and [http://localhost:8000/health/ready](http://localhost:8000/health/ready).
 
@@ -157,16 +139,9 @@ Visit [http://localhost:8000](http://localhost:8000) and complete the workspace 
 
 ## Configuration
 
-### Ollama connectivity
+### AI provider connectivity
 
-The Compose file sets `OLLAMA_BASE_URL` to `http://host.docker.internal:11434`, which is the correct host gateway for Docker Desktop. If the API cannot connect to Ollama:
-
-```bash
-curl http://localhost:11434/api/tags
-docker compose logs api worker
-```
-
-Confirm that `ollama serve` is running, the model name matches `OLLAMA_MODEL`, and Docker Desktop is running. On native Linux Docker, `host.docker.internal` may require an `extra_hosts` mapping or a host-gateway configuration.
+Check that the configured base URL is reachable from both the API and worker containers, the API key is valid, and the provider exposes the OpenAI-compatible models endpoint. Use the Models drawer to refresh the provider's model list.
 
 ### Optional Gmail delivery
 
@@ -186,6 +161,9 @@ The frontend uses the FastAPI JSON API. The most important endpoints are:
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
+| `GET` / `PUT` | `/api/ai/provider` | Read provider status or connect an OpenAI-compatible API endpoint |
+| `GET` | `/api/ai/models` | Fetch the connected provider's available models |
+| `PUT` | `/api/ai/model` | Select the model used by AI features |
 | `GET` / `PUT` | `/api/workspace` | Read or save the local workspace profile |
 | `POST` | `/api/campaigns` | Create a campaign |
 | `GET` | `/api/campaigns` | List campaigns |
@@ -208,8 +186,8 @@ Interactive OpenAPI documentation is generated at `/docs`.
 - Retrieved web content is treated as evidence, not as instructions to the agent.
 - Instagram, LinkedIn, and Facebook messages are never sent by API or browser automation.
 - Human approval is required before a draft can be marked contacted or sent.
-- The system does not provide a cloud-model fallback; Ollama is the model provider.
-- The workspace profile contains business context only. Provider credentials are not sent to the drafting agents.
+- The system sends model prompts to the configured provider. Review that provider's data handling and privacy terms.
+- Provider API keys are never returned by the application API. Protect access to the application database and deployment.
 - API authentication, TLS termination, secret management, backups, and rate limiting must be added before exposing this reference deployment to the public internet.
 
 ## Data and Persistence
@@ -245,13 +223,13 @@ pytest
 ruff check .
 ```
 
-Run the API without Docker when using a local database and local Ollama:
+Run the API without Docker when using a local database:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-For a local SQLite development database, omit `DATABASE_URL` and use `OLLAMA_BASE_URL=http://localhost:11434`. The production-like Compose path uses PostgreSQL and should remain the source of truth for deployment testing.
+For a local SQLite development database, omit `DATABASE_URL`. Configure the model provider through the dashboard after starting the application.
 
 ## Operations and Troubleshooting
 
@@ -278,7 +256,7 @@ Common issues:
 
 | Symptom | Check |
 | --- | --- |
-| Model request fails | Ollama is running, the model is pulled, and `OLLAMA_MODEL` matches `ollama list` |
+| Model request fails | Provider base URL, API key, model availability, and configured request timeout |
 | Worker does not start | `docker compose logs worker`; confirm the API and database health checks pass |
 | Port `8000` is busy | Stop the conflicting process or change the host side of the Compose port mapping |
 | Data disappears unexpectedly | Avoid `docker compose down -v`; it deletes the PostgreSQL volume |

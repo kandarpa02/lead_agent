@@ -5,6 +5,7 @@ from typing import Any, TypeVar
 from agents import Agent, AsyncOpenAI, OpenAIChatCompletionsModel, Runner, set_tracing_disabled
 from pydantic import BaseModel, Field
 
+from app.ai_provider import normalize_api_base_url
 from app.config import Settings
 from app.web_tools import collect_campaign_evidence
 
@@ -50,7 +51,7 @@ class EmailDraftOutput(BaseModel):
 
 
 def parse_json_output(raw: str, schema: type[SchemaT]) -> SchemaT:
-    """Parse and validate JSON returned as text by Ollama."""
+    """Parse and validate JSON returned as text by the configured provider."""
     text = raw.strip()
     if text.startswith("```"):
         text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
@@ -59,16 +60,22 @@ def parse_json_output(raw: str, schema: type[SchemaT]) -> SchemaT:
     except (json.JSONDecodeError, ValueError) as first_error:
         start, end = text.find("{"), text.rfind("}")
         if start == -1 or end <= start:
-            raise ValueError("Ollama did not return a valid JSON object") from first_error
+            raise ValueError("The provider did not return a valid JSON object") from first_error
         try:
             return schema.model_validate(json.loads(text[start : end + 1]))
         except (json.JSONDecodeError, ValueError) as second_error:
-            raise ValueError("Ollama returned JSON with an invalid schema") from second_error
+            raise ValueError("The provider returned JSON with an invalid schema") from second_error
 
 
 def _model(settings: Settings) -> OpenAIChatCompletionsModel:
-    client = AsyncOpenAI(api_key="ollama", base_url=f"{settings.ollama_base_url.rstrip('/')}/v1")
-    return OpenAIChatCompletionsModel(model=settings.ollama_model, openai_client=client)
+    if not settings.ai_base_url or not settings.ai_api_key or not settings.ai_model:
+        raise RuntimeError("Configure an AI provider and select a model in AI Provider settings.")
+    client = AsyncOpenAI(
+        api_key=settings.ai_api_key,
+        base_url=normalize_api_base_url(settings.ai_base_url),
+        timeout=settings.ai_timeout_seconds,
+    )
+    return OpenAIChatCompletionsModel(model=settings.ai_model, openai_client=client)
 
 
 def build_research_agent(settings: Settings) -> Agent[Any]:
@@ -184,4 +191,3 @@ async def generate_campaign_brief(
         timeout=120,
     )
     return parse_json_output(result.final_output, ProposedCampaignBrief)
-

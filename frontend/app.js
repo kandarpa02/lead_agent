@@ -10,6 +10,8 @@ let currentCampaign = null;
 let currentLeads = [];
 let currentDrafts = [];
 let workspaceProfile = null;
+let aiProvider = null;
+let availableModels = [];
 let activeTab = 'view-pipeline';
 let isTableView = false;
 let runningPollInterval = null;
@@ -873,6 +875,59 @@ async function refresh() {
   await loadCampaigns();
 }
 
+async function loadAIProvider() {
+  aiProvider = await request('/api/ai/provider');
+  const status = $('#ai-provider-status');
+  if (status) {
+    status.textContent = aiProvider.configured
+      ? `Connected to ${aiProvider.base_url}${aiProvider.selected_model ? ` · ${aiProvider.selected_model}` : ' · Select a model to get started.'}`
+      : 'No provider connected yet.';
+  }
+  if ($('#ai-provider-base-url') && aiProvider.base_url) {
+    $('#ai-provider-base-url').value = aiProvider.base_url;
+  }
+}
+
+function renderModels() {
+  const list = $('#models-list');
+  if (!availableModels.length) {
+    list.innerHTML = '<p class="models-empty">No models were returned by this provider.</p>';
+    return;
+  }
+  list.innerHTML = availableModels.map((model) => `
+    <button type="button" class="model-option ${model === aiProvider?.selected_model ? 'selected' : ''}" data-select-model="${esc(model)}">
+      <span class="model-option-name">${esc(model)}</span>
+      <span class="model-option-state">${model === aiProvider?.selected_model ? 'Selected' : 'Use model'}</span>
+    </button>
+  `).join('');
+  list.querySelectorAll('[data-select-model]').forEach((button) => {
+    button.onclick = async () => {
+      const model = button.dataset.selectModel;
+      button.disabled = true;
+      try {
+        aiProvider = await request('/api/ai/model', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model }),
+        });
+        renderModels();
+        await loadAIProvider();
+        showToast(`Model selected: ${model}`, 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+  });
+}
+
+async function loadModels() {
+  const result = await request('/api/ai/models');
+  availableModels = result.models;
+  if (aiProvider) aiProvider.selected_model = result.selected_model;
+  $('#models-provider-label').textContent = aiProvider?.base_url || 'Connected provider';
+  renderModels();
+}
+
 // DOM Event Bindings
 document.addEventListener('DOMContentLoaded', () => {
   // Sidebar New Campaign CTA & Brand Link
@@ -900,6 +955,75 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   $('#btn-close-workspace-modal').onclick = () => $('#workspace-modal').close();
   $('#btn-cancel-workspace').onclick = () => $('#workspace-modal').close();
+
+  const openAIProvider = async () => {
+    try {
+      await loadAIProvider();
+      $('#ai-provider-api-key').value = '';
+      $('#ai-provider-modal').showModal();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+  $('#btn-open-ai-provider').onclick = openAIProvider;
+  $('#btn-edit-ai-provider').onclick = () => {
+    $('#models-drawer').close();
+    openAIProvider();
+  };
+  $('#btn-close-ai-provider').onclick = () => $('#ai-provider-modal').close();
+  $('#btn-cancel-ai-provider').onclick = () => $('#ai-provider-modal').close();
+  $('#ai-provider-form').onsubmit = async (event) => {
+    event.preventDefault();
+    const submitButton = $('#btn-save-ai-provider');
+    const formData = getFormData(event.target);
+    if (!formData.api_key) delete formData.api_key;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Connecting...';
+    try {
+      const response = await request('/api/ai/provider', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      aiProvider = response;
+      availableModels = response.models;
+      $('#ai-provider-api-key').value = '';
+      await loadAIProvider();
+      $('#ai-provider-modal').close();
+      $('#models-provider-label').textContent = aiProvider.base_url;
+      renderModels();
+      $('#models-drawer').showModal();
+      showToast('Provider connected. Select a model to continue.', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Connect & Browse Models';
+    }
+  };
+  $('#btn-open-models').onclick = async () => {
+    try {
+      await loadAIProvider();
+      if (!aiProvider.configured) {
+        showToast('Connect an AI provider before browsing models.', 'info');
+        await openAIProvider();
+        return;
+      }
+      await loadModels();
+      $('#models-drawer').showModal();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+  $('#btn-refresh-models').onclick = async () => {
+    try {
+      await loadModels();
+      showToast('Model list refreshed', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+  $('#btn-close-models').onclick = () => $('#models-drawer').close();
 
   // Lead Inspector Close
   $('#btn-close-lead-modal').onclick = () => $('#lead-modal').close();
@@ -1067,6 +1191,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial Load
   refresh().then(() => {
+    loadAIProvider().catch((err) => console.error('Failed to load AI provider settings:', err));
     // If no workspace is saved, open profile modal on first visit
     if (!workspaceProfile?.business_name) {
       $('#workspace-modal').showModal();

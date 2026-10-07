@@ -38,6 +38,43 @@ def test_workspace_profile_crud():
     assert resp.json()["person_name"] == "Jane Doe"
 
 
+def test_ai_provider_connect_and_model_selection(monkeypatch):
+    async def fake_fetch_model_ids(base_url, api_key, timeout_seconds):
+        assert base_url == "https://api.example.com/v1"
+        assert api_key == "secret-key"
+        assert timeout_seconds > 0
+        return ["model-alpha", "model-beta"]
+
+    monkeypatch.setattr("app.main.fetch_model_ids", fake_fetch_model_ids)
+    invalid_url_response = client.put("/api/ai/provider", json={
+        "base_url": "https://user:password@api.example.com/v1?token=secret",
+        "api_key": "secret-key",
+    })
+    assert invalid_url_response.status_code == 422
+
+    connect_response = client.put("/api/ai/provider", json={
+        "base_url": "https://api.example.com/v1",
+        "api_key": "secret-key",
+    })
+    assert connect_response.status_code == 200
+    assert connect_response.json()["models"] == ["model-alpha", "model-beta"]
+    assert "api_key" not in connect_response.json()
+
+    provider_response = client.get("/api/ai/provider")
+    assert provider_response.status_code == 200
+    assert provider_response.json()["has_api_key"] is True
+    assert "secret-key" not in provider_response.text
+
+    models_response = client.get("/api/ai/models")
+    assert models_response.status_code == 200
+    assert models_response.json()["models"] == ["model-alpha", "model-beta"]
+
+    select_response = client.put("/api/ai/model", json={"model": "model-beta"})
+    assert select_response.status_code == 200
+    assert select_response.json()["selected_model"] == "model-beta"
+    assert client.put("/api/ai/model", json={"model": "not-available"}).status_code == 422
+
+
 def test_campaign_lifecycle():
     # 1. Create campaign
     resp = client.post("/api/campaigns", json={

@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.ai_provider import AIProviderError, fetch_model_ids, provider_read, resolve_ai_settings
 from app.agents_workflow import draft_outreach, generate_campaign_brief
 from app.config import get_settings
 from app.constants import VALID_LEAD_TRANSITIONS, LeadStatus
@@ -14,6 +15,7 @@ from app.database import get_db
 from app.gmail import GmailError, send_approved_email
 from app.models import (
     Approval,
+    AIProviderConfiguration,
     AuditEvent,
     Campaign,
     CampaignBrief,
@@ -32,6 +34,11 @@ from app.models import (
 )
 from app.schemas import (
     ApprovalUpdate,
+    AIModelUpdate,
+    AIModelsRead,
+    AIProviderConnectRead,
+    AIProviderRead,
+    AIProviderUpdate,
     CampaignBriefRead,
     CampaignBriefUpdate,
     CampaignCreate,
@@ -65,7 +72,11 @@ def frontend() -> FileResponse:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "agent_runtime": "openai-agents-sdk", "model_provider": "ollama"}
+    return {
+        "status": "ok",
+        "agent_runtime": "openai-agents-sdk",
+        "model_provider": "openai-compatible",
+    }
 
 
 @app.get("/health/live", include_in_schema=False)
@@ -77,6 +88,84 @@ def live() -> dict[str, str]:
 def ready(db: Session = Depends(get_db)) -> dict[str, str]:
     db.execute(select(1))
     return {"status": "ready"}
+
+
+@app.get("/api/ai/provider", response_model=AIProviderRead)
+def get_ai_provider(db: Session = Depends(get_db)) -> dict[str, str | bool | None]:
+    return provider_read(db.get(AIProviderConfiguration, 1))
+
+
+@app.put("/api/ai/provider", response_model=AIProviderConnectRead)
+async def update_ai_provider(
+    payload: AIProviderUpdate, db: Session = Depends(get_db)
+) -> dict[str, str | bool | None | list[str]]:
+    base_url = str(payload.base_url).rstrip("/")
+    provider = db.get(AIProviderConfiguration, 1)
+    api_key = payload.api_key or (provider.api_key if provider else None)
+    if not api_key:
+        raise HTTPException(
+            status_code=422, detail="An API key is required to connect a provider."
+        )
+    try:
+        models = await fetch_model_ids(
+            base_url, api_key, get_settings().ai_timeout_seconds
+        )
+    except AIProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    selected_model = provider.selected_model if provider and provider.selected_model in models else None
+    if provider is None:
+        provider = AIProviderConfiguration(id=1, base_url=base_url, api_key=api_key)
+        db.add(provider)
+    else:
+        provider.base_url = base_url
+        provider.api_key = api_key
+    provider.selected_model = selected_model
+    db.commit()
+    db.refresh(provider)
+    return {**provider_read(provider), "models": models}
+
+
+@app.get("/api/ai/models", response_model=AIModelsRead)
+async def get_ai_models(db: Session = Depends(get_db)) -> dict[str, str | list[str] | None]:
+    provider = db.get(AIProviderConfiguration, 1)
+    if provider is None:
+        raise HTTPException(
+            status_code=409, detail="Configure an AI provider before listing models."
+        )
+    try:
+        models = await fetch_model_ids(
+            provider.base_url, provider.api_key, get_settings().ai_timeout_seconds
+        )
+    except AIProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {"models": models, "selected_model": provider.selected_model}
+
+
+@app.put("/api/ai/model", response_model=AIProviderRead)
+async def select_ai_model(
+    payload: AIModelUpdate, db: Session = Depends(get_db)
+) -> dict[str, str | bool | None]:
+    provider = db.get(AIProviderConfiguration, 1)
+    if provider is None:
+        raise HTTPException(
+            status_code=409, detail="Configure an AI provider before selecting a model."
+        )
+    try:
+        models = await fetch_model_ids(
+            provider.base_url, provider.api_key, get_settings().ai_timeout_seconds
+        )
+    except AIProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if payload.model not in models:
+        raise HTTPException(
+            status_code=422,
+            detail="The selected model is not available from this provider.",
+        )
+    provider.selected_model = payload.model
+    db.commit()
+    db.refresh(provider)
+    return provider_read(provider)
 
 
 @app.get("/api/workspace", response_model=WorkspaceProfileRead | None)
@@ -175,7 +264,7 @@ async def add_campaign_message(campaign_id: str, payload: CampaignMessageCreate,
     }
 
     brief_output = await generate_campaign_brief(
-        get_settings(),
+        resolve_ai_settings(get_settings(), db),
         campaign.name,
         campaign.niche,
         campaign.location,
@@ -349,7 +438,7 @@ async def revise_draft(draft_id: str, payload: DraftRevisionRequest, db: Session
     if lead is None or profile is None:
         raise HTTPException(status_code=409, detail="Workspace or lead context is missing")
     revised = await draft_outreach(
-        get_settings(),
+        resolve_ai_settings(get_settings(), db),
         {
             "business_name": lead.business_name, "niche": lead.niche, "location": lead.location,
             "website": lead.website, "instagram": lead.instagram, "linkedin": lead.linkedin,

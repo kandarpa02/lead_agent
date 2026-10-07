@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 
 class CampaignCreate(BaseModel):
@@ -192,6 +192,38 @@ class WorkspaceProfileRead(WorkspaceProfileUpdate):
     updated_at: datetime
 
 
+class AIProviderUpdate(BaseModel):
+    base_url: HttpUrl
+    api_key: str | None = Field(default=None, min_length=1, max_length=4096)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: HttpUrl) -> HttpUrl:
+        if value.username or value.password or value.query or value.fragment:
+            raise ValueError("The base URL cannot include credentials, query parameters, or fragments.")
+        return value
+
+
+class AIProviderRead(BaseModel):
+    base_url: str | None
+    selected_model: str | None
+    configured: bool
+    has_api_key: bool
+
+
+class AIProviderConnectRead(AIProviderRead):
+    models: list[str]
+
+
+class AIModelUpdate(BaseModel):
+    model: str = Field(min_length=1, max_length=500)
+
+
+class AIModelsRead(BaseModel):
+    models: list[str]
+    selected_model: str | None
+
+
 class DraftUpdate(BaseModel):
     subject: str | None = Field(default=None, max_length=250)
     body: str = Field(min_length=1, max_length=10000)
@@ -220,4 +252,3 @@ class CampaignDashboardRead(BaseModel):
     campaign: CampaignRead
     latest_run_step: str | None
     counts: dict[str, int]
-
